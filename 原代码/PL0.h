@@ -14,38 +14,38 @@
 
 #define STACKSIZE  1000   // maximum storage
 
-enum symtype
+enum symtype			//当前读到字符(串的类型)
 {
-	SYM_NULL,
-	SYM_IDENTIFIER,
-	SYM_NUMBER,
-	SYM_PLUS,
-	SYM_MINUS,
-	SYM_TIMES,
-	SYM_SLASH,
-	SYM_ODD,
-	SYM_EQU,
-	SYM_NEQ,
-	SYM_LES,
-	SYM_LEQ,
-	SYM_GTR,
-	SYM_GEQ,
-	SYM_LPAREN,
-	SYM_RPAREN,
-	SYM_COMMA,
-	SYM_SEMICOLON,
-	SYM_PERIOD,
-	SYM_BECOMES,
-    SYM_BEGIN,
-	SYM_END,
-	SYM_IF,
-	SYM_THEN,
-	SYM_WHILE,
-	SYM_DO,
-	SYM_CALL,
-	SYM_CONST,
-	SYM_VAR,
-	SYM_PROCEDURE
+	SYM_NULL,			//空
+	SYM_IDENTIFIER,		//变量
+	SYM_NUMBER,			//数字
+	SYM_PLUS,			//+
+	SYM_MINUS,			//-
+	SYM_TIMES,			//*
+	SYM_SLASH,			// /
+	SYM_ODD,			//关键字odd
+	SYM_EQU,			// =
+	SYM_NEQ,			//不等于<>
+	SYM_LES,			//<
+	SYM_LEQ,			//<=
+	SYM_GTR,			//>
+	SYM_GEQ,			//>=
+	SYM_LPAREN,			//(
+	SYM_RPAREN,			//)
+	SYM_COMMA,			//,
+	SYM_SEMICOLON,		//;
+	SYM_PERIOD,			//.
+	SYM_BECOMES,		//赋值号:=
+    SYM_BEGIN,			//关键字begin
+	SYM_END,			//关键字end
+	SYM_IF,				//关键字if
+	SYM_THEN,			//关键字then
+	SYM_WHILE,			//关键字while
+	SYM_DO,				//关键字do
+	SYM_CALL,			//关键字call
+	SYM_CONST,			//关键字const
+	SYM_VAR,			//关键字var
+	SYM_PROCEDURE		//关键字procedure
 };
 
 enum idtype
@@ -121,9 +121,9 @@ int  cc;         // 记录读取到当前行的哪个字符，便于getch字符�
 int  ll;         // 当前解析指令所在行的长度
 int  kk;
 int  err;
-int  cx;         // index of current instruction to be generated.
-int  level = 0;
-int  tx = 0;
+int  cx;         // 指令数组的当前下标，标记最新要生成指令的位置
+int  level = 0;	//当前层次
+int  tx = 0;	//当前变量表的下标
 
 char line[80];	//当前解析指令行，长度为ll，以空格作为结束标记
 
@@ -164,9 +164,9 @@ typedef struct
 	char name[MAXIDLEN + 1];
 	int  kind;
 	int  value;
-} comtab;		//变量(猜测)
+} comtab;		//常量
 
-comtab table[TXMAX];	//变量表(猜测)
+comtab table[TXMAX];	//变量表,常量包括name，kind和value，变量和函数包括name,kind,level和address
 
 typedef struct
 {
@@ -174,7 +174,7 @@ typedef struct
 	int   kind;
 	short level;
 	short address;
-} mask;			//函数(猜测)
+} mask;			//变量或函数，和常量共用存储空间，将value的位置用来存储层次level和地址address
 
 FILE* infile;
 

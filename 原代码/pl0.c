@@ -53,7 +53,7 @@ void getch(void)
 } // getch
 
 //////////////////////////////////////////////////////////////////////
-// gets a symbol from input stream.
+//获取当前下一个SYMBOL，将SYMBOL的各种信息保存到全局变量中
 void getsym(void)
 {
 	int i, k;
@@ -159,7 +159,7 @@ void getsym(void)
 } // getsym
 
 //////////////////////////////////////////////////////////////////////
-// generates (assembles) an instruction.
+//产生一条指令，x为操作码，y为层次，z为参数，具体见实验文档指令格式
 void gen(int x, int y, int z)
 {
 	if (cx > CXMAX)
@@ -191,17 +191,17 @@ void test(symset s1, symset s2, int n)
 //////////////////////////////////////////////////////////////////////
 int dx;  // data allocation index
 
-// enter object(constant, variable or procedre) into table.
+//将一个变量加入到变量表中
 void enter(int kind)
 {
 	mask* mk;
 
 	tx++;
-	strcpy(table[tx].name, id);
-	table[tx].kind = kind;
+	strcpy(table[tx].name, id);		//将最近一次读到的变量名加入到当前变量表中
+	table[tx].kind = kind;			//写入变量类型
 	switch (kind)
 	{
-	case ID_CONSTANT:
+	case ID_CONSTANT:				//常量，以comtab table的形式存储
 		if (num > MAXADDRESS)
 		{
 			error(25); // The number is too great.
@@ -209,12 +209,12 @@ void enter(int kind)
 		}
 		table[tx].value = num;
 		break;
-	case ID_VARIABLE:
+	case ID_VARIABLE:				//变量，以mask的形式存储
 		mk = (mask*) &table[tx];
 		mk->level = level;
 		mk->address = dx++;
 		break;
-	case ID_PROCEDURE:
+	case ID_PROCEDURE:				//函数，以mask的形式存储
 		mk = (mask*) &table[tx];
 		mk->level = level;
 		break;
@@ -222,8 +222,8 @@ void enter(int kind)
 } // enter
 
 //////////////////////////////////////////////////////////////////////
-// locates identifier in symbol table.
-int position(char* id)
+//在变量表中查找名为id的变量的下标，返回下标i，通过table[i]可以访问变量id的内容
+int position(char* id)				
 {
 	int i;
 	strcpy(table[0].name, id);
@@ -233,7 +233,7 @@ int position(char* id)
 } // position
 
 //////////////////////////////////////////////////////////////////////
-void constdeclaration()
+void constdeclaration()		//往变量表中加入一个常量.
 {
 	if (sym == SYM_IDENTIFIER)
 	{
@@ -242,7 +242,7 @@ void constdeclaration()
 		{
 			if (sym == SYM_BECOMES)
 				error(1); // Found ':=' when expecting '='.
-			getsym();
+				getsym();
 			if (sym == SYM_NUMBER)
 			{
 				enter(ID_CONSTANT);
@@ -262,7 +262,7 @@ void constdeclaration()
 } // constdeclaration
 
 //////////////////////////////////////////////////////////////////////
-void vardeclaration(void)
+void vardeclaration(void)			//往变量表中加入一个常量
 {
 	if (sym == SYM_IDENTIFIER)
 	{
@@ -276,7 +276,7 @@ void vardeclaration(void)
 } // vardeclaration
 
 //////////////////////////////////////////////////////////////////////
-void listcode(int from, int to)
+void listcode(int from, int to)		//打印指令
 {
 	int i;
 	
@@ -289,7 +289,7 @@ void listcode(int from, int to)
 } // listcode
 
 //////////////////////////////////////////////////////////////////////
-void factor(symset fsys)
+void factor(symset fsys)			//生成因子
 {
 	void expression(symset fsys);
 	int i;
@@ -360,7 +360,7 @@ void factor(symset fsys)
 } // factor
 
 //////////////////////////////////////////////////////////////////////
-void term(symset fsys)
+void term(symset fsys)		//生成项
 {
 	int mulop;
 	symset set;
@@ -385,7 +385,7 @@ void term(symset fsys)
 } // term
 
 //////////////////////////////////////////////////////////////////////
-void expression(symset fsys)
+void expression(symset fsys)			//生成表达式
 {
 	int addop;
 	symset set;
@@ -412,7 +412,7 @@ void expression(symset fsys)
 } // expression
 
 //////////////////////////////////////////////////////////////////////
-void condition(symset fsys)
+void condition(symset fsys)			//生成条件表达式
 {
 	int relop;
 	symset set;
@@ -599,7 +599,7 @@ void statement(symset fsys)
 } // statement
 			
 //////////////////////////////////////////////////////////////////////
-void block(symset fsys)
+void block(symset fsys)			//生成一个程序体
 {
 	int cx0; // initial code index
 	mask* mk;
@@ -611,14 +611,14 @@ void block(symset fsys)
 	block_dx = dx;
 	mk = (mask*) &table[tx];
 	mk->address = cx;
-	gen(JMP, 0, 0);
+	gen(JMP, 0, 0);			//产生第一条指令JMP 0, 0
 	if (level > MAXLEVEL)
 	{
 		error(32); // There are too many levels.
 	}
-	do
+	do						//循环读完整个PL0代码产生汇编程序
 	{
-		if (sym == SYM_CONST)
+		if (sym == SYM_CONST)		//常量声明，无需产生指令
 		{ // constant declarations
 			getsym();
 			do
@@ -641,7 +641,7 @@ void block(symset fsys)
 			while (sym == SYM_IDENTIFIER);
 		} // if
 
-		if (sym == SYM_VAR)
+		if (sym == SYM_VAR)			//变量声明，无需产生指令
 		{ // variable declarations
 			getsym();
 			do
@@ -691,8 +691,8 @@ void block(symset fsys)
 			savedTx = tx;
 			set1 = createset(SYM_SEMICOLON, SYM_NULL);
 			set = uniteset(set1, fsys);
-			block(set);
-			destroyset(set1);
+			block(set);				//生成子程序体
+			destroyset(set1);		
 			destroyset(set);
 			tx = savedTx;
 			level--;
@@ -726,7 +726,7 @@ void block(symset fsys)
 	gen(INT, 0, block_dx);
 	set1 = createset(SYM_SEMICOLON, SYM_END, SYM_NULL);
 	set = uniteset(set1, fsys);
-	statement(set);
+	statement(set);		//生成语句
 	destroyset(set1);
 	destroyset(set);
 	gen(OPR, 0, OPR_RET); // return
@@ -745,7 +745,7 @@ int base(int stack[], int currentLevel, int levelDiff)
 } // base
 
 //////////////////////////////////////////////////////////////////////
-// interprets and executes codes.
+//执行汇编语言程序
 void interpret()
 {
 	int pc;        // program counter
@@ -880,7 +880,7 @@ void main ()
 		exit(1);
 	}
 
-	phi = createset(SYM_NULL);
+	phi = createset(SYM_NULL);				//空链表
 	relset = createset(SYM_EQU, SYM_NEQ, SYM_LES, SYM_LEQ, SYM_GTR, SYM_GEQ, SYM_NULL);
 	
 	// create begin symbol sets
@@ -897,7 +897,7 @@ void main ()
 	set1 = createset(SYM_PERIOD, SYM_NULL);
 	set2 = uniteset(declbegsys, statbegsys);
 	set = uniteset(set1, set2);
-	block(set);
+	block(set);			//对应实验文档中程序体生成
 	destroyset(set1);
 	destroyset(set2);
 	destroyset(set);
