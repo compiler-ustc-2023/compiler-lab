@@ -140,6 +140,21 @@ void getsym(void)
 			sym = SYM_LES;     // <
 		}
 	}
+	//添加左右方括号，add by Lin
+	else if (ch == '['){
+		sym = SYM_LEFTBRACKET;
+		getch();
+	}
+	else if(ch == ']'){
+		sym = SYM_RIGHTBRACKET;
+		getch();
+	}
+	//添加取地址符号，add by Lin
+	else if (ch == '&'){
+		sym = SYM_ADDRESS;
+		getch();
+	}
+
 	else
 	{ // other tokens
 		i = NSYM;
@@ -180,6 +195,7 @@ void test(symset s1, symset s2, int n)
 
 	if (! inset(sym, s1))
 	{
+		printf("%d\n",sym);
 		error(n);
 		s = uniteset(s1, s2);
 		while(! inset(sym, s))
@@ -191,8 +207,9 @@ void test(symset s1, symset s2, int n)
 //////////////////////////////////////////////////////////////////////
 int dx;  // data allocation index
 
-//将一个变量加入到变量表中
-void enter(int kind)
+//将一个变量加入到变量表中,modify by Lin
+//加了声明数组和指针功能，其中将3个dimension写入变量表中
+void enter(int kind, int* dimension, int depth)
 {
 	mask* mk;
 
@@ -213,10 +230,42 @@ void enter(int kind)
 		mk = (mask*) &table[tx];
 		mk->level = level;
 		mk->address = dx++;
+		mk->dimension[0] = 0;		//代表不是数组
+		mk->depth = 0;				//不是指针
 		break;
 	case ID_PROCEDURE:				//函数，以mask的形式存储
 		mk = (mask*) &table[tx];
 		mk->level = level;
+		mk->dimension[0] = 0;		//代表不是数组
+		mk->depth = 0;				//不是指针
+		break;
+
+	//加入指针和数组case，add by Lin
+	case ID_POINTER:				//指针，存储和普通变量相同，kind不同
+		mk = (mask*) &table[tx];
+		mk->level = level;
+		mk->address = dx++;
+		mk->dimension[0] = 0;		//代表不是数组
+		mk->depth = depth;			
+		break;
+	case ID_ARRAY:					//数组，存储和普通变量不同，kind不同
+		mk = (mask*) &table[tx];
+		mk->level = level;
+		mk->address = dx;
+		mk->dimension[0] = dimension[0];
+		mk->dimension[1] = dimension[1];
+		mk->dimension[2] = dimension[2];
+		mk->depth = depth;
+		int space = 1;		//为数组分配的空间
+		for(int i = 0;i<3;i++){
+			if(dimension[i] == 0)
+				break;
+			else
+			{
+				space *= dimension[i];
+			}
+		}
+		dx += space;
 		break;
 	} // switch
 } // enter
@@ -245,7 +294,7 @@ void constdeclaration()		//往变量表中加入一个常量.
 				getsym();
 			if (sym == SYM_NUMBER)
 			{
-				enter(ID_CONSTANT);
+				enter(ID_CONSTANT, NULL, 0);
 				getsym();
 			}
 			else
@@ -258,21 +307,83 @@ void constdeclaration()		//往变量表中加入一个常量.
 			error(3); // There must be an '=' to follow the identifier.
 		}
 	} else	error(4);
+
 	 // There must be an identifier to follow 'const', 'var', or 'procedure'.
 } // constdeclaration
 
 //////////////////////////////////////////////////////////////////////
-void vardeclaration(void)			//往变量表中加入一个常量
+void vardeclaration(void)			//往变量表中加入一个变量/数组/指针,modified by Lin
 {
-	if (sym == SYM_IDENTIFIER)
+	int dimension[3] = {0,0,0};		//数组维度
+	int i = 0, depth = 0;
+	if(sym == SYM_TIMES)			//指针
 	{
-		enter(ID_VARIABLE);
+		while(sym == SYM_TIMES)
+		{
+			depth += 1;
+			getsym();
+		}
+		if(sym == SYM_IDENTIFIER)
+		{
+			getsym();
+			if(sym == SYM_LEFTBRACKET)		//数组声明
+			{
+				while(sym == SYM_LEFTBRACKET)
+				{
+					if(i == ARRAY_DIM)
+					{
+						error(50);			//数组维度过大
+					}
+					getsym();
+					if(sym == SYM_NUMBER)
+					{
+						dimension[i++] = num;	//
+						getsym();
+						if(sym != SYM_RIGHTBRACKET)
+							error(52);			//缺少']'
+						getsym();
+					}
+					else error(51);			//数组方括号内为空
+				}
+				enter(ID_ARRAY,dimension,depth);		//数组元素
+			}
+			else		//普通指针
+			{
+				enter(ID_POINTER,NULL,depth);
+			}
+		}
+		else error(4);
+	}
+	else if (sym == SYM_IDENTIFIER)	//变量
+	{
 		getsym();
+		if(sym == SYM_LEFTBRACKET)		//数组声明
+		{
+			while(sym == SYM_LEFTBRACKET)
+			{
+				if(i == ARRAY_DIM)
+				{
+					error(50);			//数组维度过大
+				}
+				getsym();
+				if(sym == SYM_NUMBER)
+				{
+					dimension[i++] = num;	//
+					getsym();
+					if(sym != SYM_RIGHTBRACKET)
+						error(52);			//缺少']'
+					getsym();
+				}
+				else error(51);			//数组方括号内为空
+			}
+			enter(ID_ARRAY,dimension,0);		//数组元素
+		}
+		else		//普通变量
+		{
+			enter(ID_VARIABLE, NULL, 0);
+		}
 	}
-	else
-	{
-		error(4); // There must be an identifier to follow 'const', 'var', or 'procedure'.
-	}
+	else error(4);
 } // vardeclaration
 
 //////////////////////////////////////////////////////////////////////
@@ -290,16 +401,180 @@ void listcode(int from, int to)		//打印指令
 
 //////////////////////////////////////////////////////////////////////
 void factor(symset fsys)			//生成因子
+//新增语法,by Lin
+//1:& ident，取变量地址
+//2:ident[express][express]...		//取数组元素
+//3:若干个* 接变量，取若干次地址
+//4:若干个*加(表达式),					//计算表达式后取地址
 {
 	void expression(symset fsys);
 	int i;
 	symset set;
 	
-	test(facbegsys, fsys, 24); // The symbol can not be as the beginning of an expression.
-
-	if (inset(sym, facbegsys))
+	//test(facbegsys, fsys, 24); // The symbol can not be as the beginning of an expression.
+	while(sym == NULL)  			//除去空格
 	{
+		getsym();
+	}
+
+	//if (inset(sym, facbegsys))			//这个if没必要
+	//{
+	if (sym == SYM_IDENTIFIER)
+	{
+		if ((i = position(id)) == 0)
+		{
+			error(11); // Undeclared identifier.
+		}
+		else
+		{
+			switch (table[i].kind)
+			{
+				mask* mk;
+			case ID_CONSTANT:
+				getsym();
+				gen(LIT, 0, table[i].value);
+				break;
+			case ID_VARIABLE:
+				getsym();
+				mk = (mask*) &table[i];
+				gen(LOD, level - mk->level, mk->address);
+				break;
+			case ID_POINTER:
+				getsym();
+				mk = (mask*) &table[i];
+				gen(LOD, level - mk->level, mk->address);
+				break;
+			case ID_PROCEDURE:
+				error(21); // Procedure identifier can not be in an expression.
+				break;
+			case ID_ARRAY:		//新增读取数组元素,by Lin
+				getsym();
+				mk = (mask*) &table[i];
+				if(sym == SYM_LEFTBRACKET)			//调用了数组元素
+				{
+					while(sym == NULL)  			//除去空格
+					{
+						getsym();
+					}
+					gen(LEA, level - mk->level, mk->address);			//将数组基地址置于栈顶
+					int dim = 0;						//当前维度
+					while(sym == SYM_LEFTBRACKET)
+					{
+						if(table[i].dimension[dim++] == 0)
+						{
+							error(52);						//数组不具备该维度
+						}
+						else
+						{	
+							getsym();
+							expression(fsys);
+						}
+						int space = 1;						//当前维度的数组空间
+						for(int j = dim; j<ARRAY_DIM; j++)	//计算当前维的空间
+						{
+							if(table[i].dimension[j]!=0)
+							{
+								space *= table[i].dimension[j];
+							}
+							else break;
+						}
+						gen(LIT, 0, space);
+						gen(OPR, 0, OPR_MUL);
+						gen(OPR, 0, OPR_ADD);			//更新地址
+						while(sym == NULL)  			//除去空格
+						{
+							getsym();
+						}				
+						if(sym != SYM_RIGHTBRACKET)
+						{
+							error(53);						//没有对应的']'
+						}
+						getsym();
+					}
+					gen(LODA, 0, 0);			//将数组对应元素置于栈顶
+				}
+
+				break;
+			} // switch
+		}
+	}
+	else if (sym == SYM_NUMBER)
+	{
+		if (num > MAXADDRESS)
+		{
+			error(25); // The number is too great.
+			num = 0;
+		}
+		gen(LIT, 0, num);
+		getsym();
+	}
+	else if (sym == SYM_LPAREN)
+	{
+		getsym();
+		set = uniteset(createset(SYM_RPAREN, SYM_NULL), fsys);
+		expression(set);
+		destroyset(set);
+		if (sym == SYM_RPAREN)
+		{
+			getsym();
+		}
+		else
+		{
+			error(22); // Missing ')'.
+		}
+	}
+	else if(sym == SYM_MINUS) // UMINUS,  Expr -> '-' Expr
+	{  
+			getsym();
+			factor(fsys);
+			gen(OPR, 0, OPR_NEG);
+	}
+	//新增语法,by Lin
+	//1:& ident，取变量地址
+	//2:ident[express][express]...		//取数组元素
+	//3:若干个* 接变量/数组元素，取若干次地址
+	//4:若干个*加(表达式),					//计算表达式后取地址
+	//新增语法1
+	else if(sym == SYM_ADDRESS)
+	{
+		getsym();
+		while(sym == NULL)  			//除去空格
+		{
+			getsym();
+		}
 		if (sym == SYM_IDENTIFIER)
+		{
+			if ((i = position(id)) == 0)
+			{
+				error(11); // Undeclared identifier.
+			}
+			else
+			{
+				mask* mk = (mask*) &table[i];
+				gen(LEA, level - mk->level, mk->address);
+			}
+			getsym();
+		}
+		else
+		{
+			error(55);			//取地址符后没接变量
+		}
+	}
+
+	//新增语法3和4
+	else if(sym == SYM_TIMES)
+	{
+		int depth = 0;
+		while(sym == SYM_TIMES)
+		{
+			depth ++;
+			getsym();
+		}
+		while(sym == NULL)  			//除去空格
+		{
+			getsym();
+		}
+		if(sym == SYM_IDENTIFIER)			//多个*接变量
 		{
 			if ((i = position(id)) == 0)
 			{
@@ -311,30 +586,70 @@ void factor(symset fsys)			//生成因子
 				{
 					mask* mk;
 				case ID_CONSTANT:
-					gen(LIT, 0, table[i].value);
+					error(57);				//不允许取常量指向的地址的内容
 					break;
 				case ID_VARIABLE:
+					error(58);				//访问非指针变量指向的地址
+				case ID_POINTER:
 					mk = (mask*) &table[i];
 					gen(LOD, level - mk->level, mk->address);
+					getsym();
 					break;
 				case ID_PROCEDURE:
 					error(21); // Procedure identifier can not be in an expression.
 					break;
+				case ID_ARRAY:		//新增读取数组元素,by Lin
+					getsym();
+					mk = (mask*) &table[i];
+					if(sym == SYM_LEFTBRACKET)			//调用了数组元素
+					{
+						while(sym == NULL)  			//除去空格
+						{
+							getsym();
+						}
+						gen(LEA, level - mk->level, mk->address);			//将数组基地址置于栈顶
+						int dim = 0;						//当前维度
+						while(sym == SYM_LEFTBRACKET)
+						{
+							if(table[i].dimension[dim++] == 0)
+							{
+								error(52);						//数组不具备该维度
+							}
+							else
+							{	
+								getsym();
+								expression(fsys);
+							}
+							int space = 1;						//当前维度的数组空间
+							for(int j = dim; j<ARRAY_DIM; j++)	//计算当前维的空间
+							{
+								if(table[i].dimension[j]!=0)
+								{
+									space *= table[i].dimension[j];
+								}
+								else break;
+							}
+							gen(LIT, 0, space);
+							gen(OPR, 0, OPR_MUL);
+							gen(OPR, 0, OPR_ADD);			//更新地址
+							while(sym == NULL)  			//除去空格
+							{
+								getsym();
+							}				
+							if(sym != SYM_RIGHTBRACKET)
+							{
+								error(53);						//没有对应的']'
+							}
+							getsym();
+						}
+						gen(LODA, 0, 0);			//将数组对应元素置于栈顶
+					}
+
+					break;
 				} // switch
 			}
-			getsym();
 		}
-		else if (sym == SYM_NUMBER)
-		{
-			if (num > MAXADDRESS)
-			{
-				error(25); // The number is too great.
-				num = 0;
-			}
-			gen(LIT, 0, num);
-			getsym();
-		}
-		else if (sym == SYM_LPAREN)
+		else if (sym == SYM_LPAREN)					//多个*后面接表达式
 		{
 			getsym();
 			set = uniteset(createset(SYM_RPAREN, SYM_NULL), fsys);
@@ -349,14 +664,21 @@ void factor(symset fsys)			//生成因子
 				error(22); // Missing ')'.
 			}
 		}
-		else if(sym == SYM_MINUS) // UMINUS,  Expr -> '-' Expr
-		{  
-			 getsym();
-			 factor(fsys);
-			 gen(OPR, 0, OPR_NEG);
+		else 
+			error(57);			//非法取地址操作
+		while(depth > 0)			//进行若干次取地址运算
+		{
+			depth --;
+			gen(LODA, 0, 0);
 		}
-		test(fsys, createset(SYM_LPAREN, SYM_NULL), 23);
-	} // if
+	}
+
+
+	//错误检测,新增元素赋值号及右方括号by Lin
+	symset set1 = createset(SYM_BECOMES,SYM_RIGHTBRACKET);
+	fsys = uniteset(fsys, set1);
+	test(fsys, createset(SYM_LPAREN, SYM_NULL, SYM_LEFTBRACKET,SYM_BECOMES), 23);
+	//} // if
 } // factor
 
 //////////////////////////////////////////////////////////////////////
@@ -463,24 +785,87 @@ void condition(symset fsys)			//生成条件表达式
 } // condition
 
 //////////////////////////////////////////////////////////////////////
-void statement(symset fsys)
+void statement(symset fsys)			//语句,加入了指针和数组的赋值，modified by Lin
 {
 	int i, cx1, cx2;
 	symset set1, set;
-
-	if (sym == SYM_IDENTIFIER)
+	if (sym == SYM_IDENTIFIER)		//修改，加入数组的赋值，modified by Lin
 	{ // variable assignment
+		while(sym == SYM_NULL) getsym();
 		mask* mk;
 		if (! (i = position(id)))
 		{
 			error(11); // Undeclared identifier.
 		}
-		else if (table[i].kind != ID_VARIABLE)
+		else if (table[i].kind != ID_VARIABLE && table[i].kind != ID_ARRAY && table[i].kind != ID_POINTER)
 		{
 			error(12); // Illegal assignment.
 			i = 0;
 		}
 		getsym();
+		mk = (mask*) &table[i];
+		if (sym == SYM_BECOMES)
+		{
+			getsym();
+			expression(fsys);
+			if (i)
+			{
+				gen(STO, level - mk->level, mk->address);
+			}
+		}
+		else if(sym == SYM_LEFTBRACKET)			//调用了数组元素
+		{
+			gen(LEA, level - mk->level, mk->address);			//将数组基地址置于栈顶
+			int dim = 0;						//当前维度
+			while(sym == SYM_LEFTBRACKET)
+			{
+				if(table[i].dimension[dim++] == 0)
+				{
+					error(52);						//数组不具备该维度
+				}
+				else
+				{	
+					getsym();
+					expression(fsys);
+				}
+				int space = 1;						//当前维度的数组空间
+				for(int j = dim; j<ARRAY_DIM; j++)	//计算当前维的空间
+				{
+					if(table[i].dimension[j]!=0)
+					{
+						space *= table[i].dimension[j];
+					}
+					else break;
+				}
+				gen(LIT, 0, space);
+				gen(OPR, 0, OPR_MUL);
+				gen(OPR, 0, OPR_ADD);			//更新地址				
+				if(sym != SYM_RIGHTBRACKET)
+				{
+					error(53);						//没有对应的']'
+				}
+				getsym();
+			}
+			if (sym == SYM_BECOMES)
+			{
+				getsym();
+			}
+			else
+			{
+				error(13); // ':=' expected.
+			}
+			expression(fsys);
+			gen(STOA, level - mk->level, mk->address);
+		}
+		else
+		{
+			error(13); // ':=' expected.
+		}
+	}
+	else if (sym == SYM_TIMES)			//给指针指向内容赋值，add by Lin
+	{
+		getsym();
+		expression(fsys);				//此时栈顶为一个地址
 		if (sym == SYM_BECOMES)
 		{
 			getsym();
@@ -489,13 +874,12 @@ void statement(symset fsys)
 		{
 			error(13); // ':=' expected.
 		}
-		expression(fsys);
-		mk = (mask*) &table[i];
-		if (i)
-		{
-			gen(STO, level - mk->level, mk->address);
-		}
+		expression(fsys);				//栈顶为一个表达式的值
+		gen(STOA, 0, 0);
 	}
+
+
+
 	else if (sym == SYM_CALL)
 	{ // procedure call
 		getsym();
@@ -595,6 +979,8 @@ void statement(symset fsys)
 		gen(JMP, 0, cx1);
 		code[cx2].a = cx;
 	}
+
+	//错误检测
 	test(fsys, phi, 19);
 } // statement
 			
@@ -669,7 +1055,7 @@ void block(symset fsys)			//生成一个程序体
 			getsym();
 			if (sym == SYM_IDENTIFIER)
 			{
-				enter(ID_PROCEDURE);
+				enter(ID_PROCEDURE, NULL, 0);
 				getsym();
 			}
 			else
@@ -712,9 +1098,11 @@ void block(symset fsys)			//生成一个程序体
 			}
 		} // while
 		dx = block_dx; //restore dx after handling procedure call!
-		set1 = createset(SYM_IDENTIFIER, SYM_NULL);
+
+		//这里的检测不知道为什么有bug，先注释了,by Lin
+		set1 = createset(SYM_IDENTIFIER, SYM_NULL, SYM_VAR, SYM_SEMICOLON);
 		set = uniteset(statbegsys, set1);
-		test(set, declbegsys, 7);
+		//test(set, declbegsys, 7);
 		destroyset(set1);
 		destroyset(set);
 	}
@@ -833,6 +1221,19 @@ void interpret()
 		case LOD:
 			stack[++top] = stack[base(stack, b, i.l) + i.a];
 			break;
+
+		//添加了LODA和SOT和LEA指令，modified by Lin
+		case LODA:
+			stack[top] = stack[stack[top]];
+			break;
+		case STOA:
+			stack[stack[top-1]] = stack[top];
+			printf("%d\n", stack[top]);
+			break;
+		case LEA:
+			stack[++top] = base(stack, b, i.l) + i.a;
+			break;
+
 		case STO:
 			stack[base(stack, b, i.l) + i.a] = stack[top];
 			printf("%d\n", stack[top]);
@@ -865,7 +1266,7 @@ void interpret()
 } // interpret
 
 //////////////////////////////////////////////////////////////////////
-void main ()
+int main ()
 {
 	FILE* hbin;
 	char s[80];
@@ -884,7 +1285,7 @@ void main ()
 	relset = createset(SYM_EQU, SYM_NEQ, SYM_LES, SYM_LEQ, SYM_GTR, SYM_GEQ, SYM_NULL);
 	
 	// create begin symbol sets
-	declbegsys = createset(SYM_CONST, SYM_VAR, SYM_PROCEDURE, SYM_NULL);
+	declbegsys = createset(SYM_CONST, SYM_VAR, SYM_PROCEDURE, SYM_NULL); 
 	statbegsys = createset(SYM_BEGIN, SYM_CALL, SYM_IF, SYM_WHILE, SYM_NULL);
 	facbegsys = createset(SYM_IDENTIFIER, SYM_NUMBER, SYM_LPAREN, SYM_MINUS, SYM_NULL);
 
@@ -921,6 +1322,8 @@ void main ()
 	else
 		printf("There are %d error(s) in PL/0 program.\n", err);
 	listcode(0, cx);
+
+	return 0;
 } // main
 
 //////////////////////////////////////////////////////////////////////

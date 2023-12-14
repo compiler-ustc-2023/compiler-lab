@@ -3,12 +3,16 @@
 #define NRW        11     // 关键字的总数量
 #define TXMAX      500    // length of identifier table
 #define MAXNUMLEN  14     // maximum number of digits in numbers
-#define NSYM       10     // maximum number of symbols in array ssym and csym
+#define NSYM       13     // maximum number of symbols in array ssym and csym,需要更改最大符号数数组括号
 #define MAXIDLEN   10     // 变量名最大长度
 
 #define MAXADDRESS 32767  // maximum address
 #define MAXLEVEL   32     // maximum depth of nesting block
 #define CXMAX      500    // size of code array
+
+//add by Lin
+#define ARRAY_DIM  3	 //数组最大维度
+
 
 #define MAXSYM     30     // maximum number of symbols  
 
@@ -17,7 +21,7 @@
 enum symtype			//当前读到字符(串的类型)
 {
 	SYM_NULL,			//空
-	SYM_IDENTIFIER,		//变量
+	SYM_IDENTIFIER,		//变量或常量之类的
 	SYM_NUMBER,			//数字
 	SYM_PLUS,			//+
 	SYM_MINUS,			//-
@@ -45,17 +49,25 @@ enum symtype			//当前读到字符(串的类型)
 	SYM_CALL,			//关键字call
 	SYM_CONST,			//关键字const
 	SYM_VAR,			//关键字var
-	SYM_PROCEDURE		//关键字procedure
+	SYM_PROCEDURE,		//关键字procedure
+	//补充数组的左右括号以及取地址符,by Lin
+	SYM_LEFTBRACKET,
+	SYM_RIGHTBRACKET,
+	SYM_ADDRESS
 };
 
 enum idtype
 {
-	ID_CONSTANT, ID_VARIABLE, ID_PROCEDURE
+	ID_CONSTANT, ID_VARIABLE, ID_PROCEDURE,
+	//加入指针和数组类型，by Lin
+	ID_POINTER,
+	ID_ARRAY
 };
 
+//新增指令，modified by Lin
 enum opcode
 {
-	LIT, OPR, LOD, STO, CAL, INT, JMP, JPC
+	LIT, OPR, LOD, STO, CAL, INT, JMP, JPC, STOA, LODA, LEA
 };
 
 enum oprcode
@@ -145,18 +157,29 @@ int wsym[NRW + 1] =
 int ssym[NSYM + 1] =
 {
 	SYM_NULL, SYM_PLUS, SYM_MINUS, SYM_TIMES, SYM_SLASH,
-	SYM_LPAREN, SYM_RPAREN, SYM_EQU, SYM_COMMA, SYM_PERIOD, SYM_SEMICOLON
+	SYM_LPAREN, SYM_RPAREN, SYM_EQU, SYM_COMMA, SYM_PERIOD, SYM_SEMICOLON,
+	//补充数组的左右括号以及取地址,by Lin
+	SYM_LEFTBRACKET,
+	SYM_RIGHTBRACKET,
+	SYM_ADDRESS
 };
 
 char csym[NSYM + 1] =
 {
-	' ', '+', '-', '*', '/', '(', ')', '=', ',', '.', ';'
+	' ', '+', '-', '*', '/', '(', ')', '=', ',', '.', ';',
+	//补充数组的左右括号,by Lin
+	//加入取地址符
+	'[',']','&'
 };
 
-#define MAXINS   8
+//新增指令STOA,将栈顶的值存在次栈顶指向的地址中
+//新增指令LODA,将栈顶指向的值取出来替换掉当前栈顶
+//新增指令LEA,取变量地址于栈顶
+//modified by Lin
+#define MAXINS   11
 char* mnemonic[MAXINS] =
 {
-	"LIT", "OPR", "LOD", "STO", "CAL", "INT", "JMP", "JPC"
+	"LIT", "OPR", "LOD", "STO", "CAL", "INT", "JMP", "JPC","STOA","LODA","LEA"
 };
 
 typedef struct
@@ -164,6 +187,9 @@ typedef struct
 	char name[MAXIDLEN + 1];
 	int  kind;
 	int  value;
+	//数组每一维的维度，最高为3维，add by Lin
+	int  dimension[3];
+	int  depth;		//指针深度				
 } comtab;		//常量
 
 comtab table[TXMAX];	//变量表,常量包括name，kind和value，变量和函数包括name,kind,level和address
@@ -174,6 +200,9 @@ typedef struct
 	int   kind;
 	short level;
 	short address;
+	//数组每一维的维度，最高为3维，add by Lin
+	int  dimension[3];	
+	int  depth;		//指针深度	
 } mask;			//变量或函数，和常量共用存储空间，将value的位置用来存储层次level和地址address
 
 FILE* infile;
