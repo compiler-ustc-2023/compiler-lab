@@ -1,0 +1,23 @@
+var m;
+var i;
+var j;
+var k;
+var l;
+var t;
+var u;
+var *p;
+var **q;
+var ***r;
+var * a[10];
+begin
+p := &m;
+q := &p;
+r := &q;
+***r := 100;
+i := ***r;
+a[0] := &m;
+a[1] := p;
+i := m;
+j := *a[0];
+k := *a[1];
+end.

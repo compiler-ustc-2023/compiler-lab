@@ -1,0 +1,17 @@
+var m;
+var *p;
+var **q;
+var ***r;
+var * a[10] ;
+begin
+p := &m;
+q := &p;
+r := &q;
+
+***r := 100;
+a[0] := &m;
+a[1] := p;
+print( * a[0] , * a[1] , m );
+print();
+print(random(100),random(100),random(20,50));
+end.

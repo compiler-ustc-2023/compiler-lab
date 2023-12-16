@@ -1,0 +1,10 @@
+var m;
+var *p;
+var i;
+var j;
+begin
+p := &m;
+m := 9;
+i := *p;
+j := i;
+end.
