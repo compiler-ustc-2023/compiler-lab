@@ -13,5 +13,7 @@ a[0] := &m;
 a[1] := p;
 print( * a[0] , * a[1] , m );
 print();
-print(random(100),random(100),random(20,50));
+random(100);
+random(100);
+random(20,23);
 end.

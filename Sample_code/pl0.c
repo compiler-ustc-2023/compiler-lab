@@ -1322,7 +1322,7 @@ void interpret()
 			{
 			case PRINT_ADDR:
 				param_num = stack[top];
-				printf("systemcall: print\n");
+				printf("system call: print\n");
 				if(param_num == 0){
 					printf("\n");
 				}
@@ -1335,8 +1335,8 @@ void interpret()
 				}
 				break;
 			case RANDOM_ADDR:
+				printf("system call: random\n");
 				param_num = stack[top];
-				srand((unsigned)time(NULL));
 				int random_num;
 				if(param_num == 0){
 					random_num = (int)rand();
@@ -1344,12 +1344,14 @@ void interpret()
 				}
 				else if(param_num == 1){
 					random_num = (int)rand() % stack[top-1];
-					printf("%d ", (int)rand());
+					printf("%d ", random_num);
 				}
 				else if(param_num == 2){
 					random_num = (int)rand() % (stack[top-1] - stack[top-2]) + stack[top-2];
-					printf("%d ", (int)rand());
+					printf("%d ", random_num);
 				}
+				stack[++top] = random_num;
+				printf("\n");
 				break;
 			case CALLSTACK_ADDR:
 				//TODO by wu
@@ -1450,3 +1452,4 @@ int main ()
 
 //////////////////////////////////////////////////////////////////////
 // eof pl0.c
+//print(random(100),random(100),random(20,50));
