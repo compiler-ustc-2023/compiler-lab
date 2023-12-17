@@ -128,7 +128,7 @@ char* err_msg[] =
 /* 27 */    "Missing ','",
 /* 28 */    "Incorrect pc",
 /* 29 */    "Incorrect paramlist",
-/* 30 */    "",
+/* 30 */    "variable or procedure expected",
 /* 31 */    "",
 /* 32 */    "There are too many levels."
 };
@@ -144,6 +144,7 @@ int  kk;
 int  err;
 int  cx;         // 指令数组的当前下标，标记最新要生成指令的位置
 int  level = 0;	//当前层次
+int  start_level = MAXLEVEL;	//搜索符号表时只返回层次小于等于start_level的变量 by wu
 int  tx = 0;	//当前变量表的下标
 
 char line[80];	//当前解析指令行，长度为ll，以空格作为结束标记

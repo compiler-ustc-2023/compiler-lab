@@ -278,12 +278,12 @@ void enter(int kind, int* dimension, int depth)
 
 //////////////////////////////////////////////////////////////////////
 //在变量表中查找名为id的变量的下标，返回下标i，通过table[i]可以访问变量id的内容
-int position(char* id)				
+int position(char* id, int start_level)				
 {
 	int i;
 	strcpy(table[0].name, id);
 	i = tx + 1;
-	while (strcmp(table[--i].name, id) != 0);
+	while (strcmp(table[--i].name, id) != 0 || ((mask*) &table[i])->level > start_level);	//如果在不同嵌套深度有同名变量优先搜索到当前嵌套深度的变量
 	return i;
 } // position
 
@@ -415,7 +415,7 @@ void factor(symset fsys)			//生成因子
 //4:若干个*加(表达式),					//计算表达式后取地址
 {
 	void expression(symset fsys);
-	int i;
+	int i;	//最近读的关键字在变量表中的下标
 	symset set;
 	
 	//test(facbegsys, fsys, 24); // The symbol can not be as the beginning of an expression.
@@ -428,7 +428,7 @@ void factor(symset fsys)			//生成因子
 	//{
 	if (sym == SYM_IDENTIFIER)
 	{
-		if ((i = position(id)) == 0)
+		if ((i = position(id,start_level)) == 0)
 		{
 			error(11); // Undeclared identifier.
 		}
@@ -452,7 +452,17 @@ void factor(symset fsys)			//生成因子
 				gen(LOD, level - mk->level, mk->address);
 				break;
 			case ID_PROCEDURE:
-				error(21); // Procedure identifier can not be in an expression.
+				getsym();
+				if(sym == SYM_SCOPE){
+					getsym();
+					if(sym != SYM_IDENTIFIER)
+						error(30);
+					mk = (mask*) &table[i];		//子函数的符号表表项
+					start_level = mk->level + 1;	//子函数本身的层次加一才能索引到子函数中的变量
+					factor(fsys);
+					start_level = MAXLEVEL;
+				}
+				// error(21); // Procedure identifier can not be in an expression.
 				break;
 			case ID_ARRAY:		//新增读取数组元素,by Lin
 				getsym();
@@ -505,6 +515,14 @@ void factor(symset fsys)			//生成因子
 			} // switch
 		}
 	}
+	else if(sym == SYM_SCOPE){
+		getsym();
+		if(sym != SYM_IDENTIFIER)
+			error(30);
+		start_level = 0;	//索引到main函数层次中定义的变量
+		factor(fsys);
+		start_level = MAXLEVEL;
+	}
 	else if (sym == SYM_NUMBER)
 	{
 		if (num > MAXADDRESS)
@@ -551,7 +569,7 @@ void factor(symset fsys)			//生成因子
 		}
 		if (sym == SYM_IDENTIFIER)
 		{
-			if ((i = position(id)) == 0)
+			if ((i = position(id,start_level)) == 0)
 			{
 				error(11); // Undeclared identifier.
 			}
@@ -583,7 +601,7 @@ void factor(symset fsys)			//生成因子
 		}
 		if(sym == SYM_IDENTIFIER)			//多个*接变量
 		{
-			if ((i = position(id)) == 0)
+			if ((i = position(id,start_level)) == 0)
 			{
 				error(11); // Undeclared identifier.
 			}
@@ -801,7 +819,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 	{ // variable assignment
 		while(sym == SYM_NULL) getsym();
 		mask* mk;
-		if (! (i = position(id)))
+		if (! (i = position(id,start_level)))
 		{
 			error(11); // Undeclared identifier.
 		}
@@ -897,7 +915,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 		}
 		else
 		{
-			if (! (i = position(id)))
+			if (! (i = position(id,start_level)))
 			{
 				error(11); // Undeclared identifier.
 			}
@@ -1156,7 +1174,7 @@ void block(symset fsys)			//生成一个程序体
 			block(set);				//生成子程序体
 			destroyset(set1);		
 			destroyset(set);
-			tx = savedTx;
+			tx = savedTx;			//子程序分析完后将子程序的变量从符号表中“删除”
 			level--;
 
 			if (sym == SYM_SEMICOLON)
