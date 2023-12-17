@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#define NRW        14     // 关键字的总数量
+#define NRW        16     // 关键字的总数量
 #define TXMAX      500    // length of identifier table
 #define MAXNUMLEN  14     // maximum number of digits in numbers
 #define NSYM       13     // maximum number of symbols in array ssym and csym,需要更改最大符号数数组括号
@@ -62,7 +62,10 @@ enum symtype			//当前读到字符(串的类型)
 	//新增关键字print,random,CALLSTACK,by wu
 	SYM_PRINT,
 	SYM_RANDOM,
-	SYM_CALLSTACK
+	SYM_CALLSTACK,
+	//新增关键字break,continue, by tian
+	SYM_BREAK,
+	SYM_CONTINUE
 };
 
 enum idtype
@@ -148,6 +151,11 @@ int  start_level = MAXLEVEL;	//搜索符号表时只返回层次小于等于star
 int  tx = 0;	//当前变量表的下标
 
 char line[80];	//当前解析指令行，长度为ll，以空格作为结束标记
+
+int loop_level = 0;
+int break_mark[MAXLEVEL][CXMAX];
+int continue_mark[MAXLEVEL][CXMAX];
+//当前所处的循环层次 以及break/continue的位置标记，用于break/continue对应的pl0代码的回填 by tian
 
 instruction code[CXMAX];
 
