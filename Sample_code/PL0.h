@@ -133,7 +133,9 @@ char* err_msg[] =
 /* 29 */    "Incorrect paramlist",
 /* 30 */    "variable or procedure expected",
 /* 31 */    "",
-/* 32 */    "There are too many levels."
+/* 32 */    "There are too many levels.",
+/* 33 */    "break statement not within a loop",
+/* 34 */    "continue statement not within a loop"
 };
 
 //////////////////////////////////////////////////////////////////////
