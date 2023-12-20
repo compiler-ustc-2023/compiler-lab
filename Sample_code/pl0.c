@@ -1015,11 +1015,13 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 	}
 	else if(sym == SYM_BREAK) // break by tian
 	{
-	    //TODO
+	    break_mark[loop_level][++break_mark[loop_level][0]] = cx;
+	    gen(JMP, 0, 0);
 	}
 	else if(sym == SYM_CONTINUE) // continue by tian
 	{
-	    //TODO
+	    continue_mark[loop_level][++continue_mark[loop_level][0]] = cx;
+        gen(JMP, 0, 0);
 	}
 	else if(sym == SYM_PRINT)	//内置函数 print()的实现 by wu
 	{
