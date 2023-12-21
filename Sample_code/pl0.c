@@ -123,6 +123,10 @@ void getsym(void)
 			sym = SYM_GEQ;     // >=
 			getch();
 		}
+        else if (ch == '>') {
+			sym = SYM_SHR; // >> add by wdy
+			getch();
+		}
 		else
 		{
 			sym = SYM_GTR;     // >
@@ -136,6 +140,10 @@ void getsym(void)
 			sym = SYM_LEQ;     // <=
 			getch();
 		}
+        else if (ch == '<') {
+			sym = SYM_SHL; // << add by wdy
+			getch();
+		}
 		else if (ch == '>')
 		{
 			sym = SYM_NEQ;     // <>
@@ -146,7 +154,54 @@ void getsym(void)
 			sym = SYM_LES;     // <
 		}
 	}
-	//添加左右方括号，add by Lin
+    // 添加  //  */  /*
+	// 并在此处直接处理注释
+    // add by wdy
+	else if (ch == '/') {
+		getch();
+		if (ch == '/') {
+			sym = SYM_LINECOMMENT; // 行注释
+			// 行尾在本程序中是空格，定义在getch() line[++ll] = ' ';
+			// 但是不能用 ch == ' ' 来判定行结尾，因为中间可能有插入空格
+			// 一旦读完该行，直接返回，不需要做之后的判断
+			// 如何表示读完行？可以参考 SEMICOLON 的处理，获取下一个symbol即可
+			while (cc < ll) { getch(); }
+			getsym();
+			return;
+		} else if (ch == '*') {
+			sym = SYM_LEFTBLOCKCOMMENT;			   // 左块注释
+			while (sym != SYM_RIGHTBLOCKCOMMENT) { // 直到找到右块注释为止
+				while (ch != '*') {
+					if (ch == '/') {
+						getch();
+						if (ch == '*') {
+							error(31); // 不能嵌套注释
+						}
+					} else
+						getch();
+				}
+				getsym();
+			}
+			// 获取下一个 symbol，表示结束注释
+			getsym();
+			return;
+		} else {
+			sym = SYM_SLASH; // 否则就是除号
+		}
+	} else if (ch == '*') {
+		getch();
+		if (ch == '/') {
+			sym = SYM_RIGHTBLOCKCOMMENT; // 右块注释
+			getch();
+		} else {
+			sym = SYM_TIMES; // 否则就是乘号
+		}
+	}
+    
+    // 这里是处理可能会出现复合运算符的，所以'[' ']' '&'
+	// 不需要在这里处理，会统一在 else 中处理 
+    // by wdy
+	// 添加左右方括号，add by Lin
 	else if (ch == '['){
 		sym = SYM_LEFTBRACKET;
 		getch();
@@ -414,11 +469,11 @@ void factor(symset fsys)			//生成因子
 //3:若干个* 接变量，取若干次地址
 //4:若干个*加(表达式),					//计算表达式后取地址
 {
-	void expression(symset fsys);
+	void shift(symset fsys);
 	int i;	//最近读的关键字在变量表中的下标
 	symset set;
 	
-	//test(facbegsys, fsys, 24); // The symbol can not be as the beginning of an expression.
+	//test(facbegsys, fsys, 24); // The symbol can not be as the beginning of an shift.
 	while(sym == SYM_NULL)  			//除去空格
 	{
 		getsym();
@@ -462,14 +517,14 @@ void factor(symset fsys)			//生成因子
 					factor(fsys);
 					start_level = MAXLEVEL;
 				}
-				// error(21); // Procedure identifier can not be in an expression.
+				// error(21); // Procedure identifier can not be in an shift.
 				break;
 			case ID_ARRAY:		//新增读取数组元素,by Lin
 				getsym();
 				mk = (mask*) &table[i];
 				if(sym == SYM_LEFTBRACKET)			//调用了数组元素
 				{
-					while(sym == NULL)  			//除去空格
+					while(sym == SYM_NULL)  			//除去空格
 					{
 						getsym();
 					}
@@ -484,7 +539,7 @@ void factor(symset fsys)			//生成因子
 						else
 						{	
 							getsym();
-							expression(fsys);
+							shift(fsys);
 						}
 						int space = 1;						//当前维度的数组空间
 						for(int j = dim; j<ARRAY_DIM; j++)	//计算当前维的空间
@@ -498,7 +553,7 @@ void factor(symset fsys)			//生成因子
 						gen(LIT, 0, space);
 						gen(OPR, 0, OPR_MUL);
 						gen(OPR, 0, OPR_ADD);			//更新地址
-						while(sym == NULL)  			//除去空格
+						while(sym == SYM_NULL)  			//除去空格
 						{
 							getsym();
 						}				
@@ -537,7 +592,7 @@ void factor(symset fsys)			//生成因子
 	{
 		getsym();
 		set = uniteset(createset(SYM_RPAREN, SYM_NULL), fsys);
-		expression(set);
+		shift(set);
 		destroyset(set);
 		if (sym == SYM_RPAREN)
 		{
@@ -563,7 +618,7 @@ void factor(symset fsys)			//生成因子
 	else if(sym == SYM_ADDRESS)
 	{
 		getsym();
-		while(sym == NULL)  			//除去空格
+		while(sym == SYM_NULL)  			//除去空格
 		{
 			getsym();
 		}
@@ -595,7 +650,7 @@ void factor(symset fsys)			//生成因子
 			depth ++;
 			getsym();
 		}
-		while(sym == NULL)  			//除去空格
+		while(sym == SYM_NULL)  			//除去空格
 		{
 			getsym();
 		}
@@ -621,14 +676,14 @@ void factor(symset fsys)			//生成因子
 					getsym();
 					break;
 				case ID_PROCEDURE:
-					error(21); // Procedure identifier can not be in an expression.
+					error(21); // Procedure identifier can not be in an shift.
 					break;
 				case ID_ARRAY:		//新增读取数组元素,by Lin
 					getsym();
 					mk = (mask*) &table[i];
 					if(sym == SYM_LEFTBRACKET)			//调用了数组元素
 					{
-						while(sym == NULL)  			//除去空格
+						while(sym == SYM_NULL)  			//除去空格
 						{
 							getsym();
 						}
@@ -643,7 +698,7 @@ void factor(symset fsys)			//生成因子
 							else
 							{	
 								getsym();
-								expression(fsys);
+								shift(fsys);
 							}
 							int space = 1;						//当前维度的数组空间
 							for(int j = dim; j<ARRAY_DIM; j++)	//计算当前维的空间
@@ -657,7 +712,7 @@ void factor(symset fsys)			//生成因子
 							gen(LIT, 0, space);
 							gen(OPR, 0, OPR_MUL);
 							gen(OPR, 0, OPR_ADD);			//更新地址
-							while(sym == NULL)  			//除去空格
+							while(sym == SYM_NULL)  			//除去空格
 							{
 								getsym();
 							}				
@@ -678,7 +733,7 @@ void factor(symset fsys)			//生成因子
 		{
 			getsym();
 			set = uniteset(createset(SYM_RPAREN, SYM_NULL), fsys);
-			expression(set);
+			shift(set);
 			destroyset(set);
 			if (sym == SYM_RPAREN)
 			{
@@ -759,6 +814,23 @@ void expression(symset fsys)			//生成表达式
 	destroyset(set);
 } // expression
 
+void shift(symset fsys) {  // 生成移位表达式 by wdy
+	int	   shiftop;
+	symset set = uniteset(fsys, createset(SYM_SHL, SYM_SHR, SYM_NULL));
+	expression(set);
+	while (sym == SYM_SHL || sym == SYM_SHR) {
+		shiftop = sym;
+		getsym();
+		expression(set);
+		if (shiftop == SYM_SHL) {
+			gen(OPR, 0, OPR_SHL);
+		} else {
+			gen(OPR, 0, OPR_SHR);
+		}
+	}
+	destroyset(set);
+}
+
 //////////////////////////////////////////////////////////////////////
 void condition(symset fsys)			//生成条件表达式
 {
@@ -768,13 +840,13 @@ void condition(symset fsys)			//生成条件表达式
 	if (sym == SYM_ODD)
 	{
 		getsym();
-		expression(fsys);
+		shift(fsys);
 		gen(OPR, 0, 6);
 	}
 	else
 	{
 		set = uniteset(relset, fsys);
-		expression(set);
+		shift(set);
 		destroyset(set);
 		if (! inset(sym, relset))
 		{
@@ -784,7 +856,7 @@ void condition(symset fsys)			//生成条件表达式
 		{
 			relop = sym;
 			getsym();
-			expression(fsys);
+			shift(fsys);
 			switch (relop)
 			{
 			case SYM_EQU:
@@ -833,7 +905,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 		if (sym == SYM_BECOMES)
 		{
 			getsym();
-			expression(fsys);
+			shift(fsys);
 			if (i)
 			{
 				gen(STO, level - mk->level, mk->address);
@@ -852,7 +924,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 				else
 				{	
 					getsym();
-					expression(fsys);
+					shift(fsys);
 				}
 				int space = 1;						//当前维度的数组空间
 				for(int j = dim; j<ARRAY_DIM; j++)	//计算当前维的空间
@@ -880,7 +952,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 			{
 				error(13); // ':=' expected.
 			}
-			expression(fsys);
+			shift(fsys);
 			gen(STOA, level - mk->level, mk->address);
 		}
 		else
@@ -891,7 +963,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 	else if (sym == SYM_TIMES)			//给指针指向内容赋值，add by Lin
 	{
 		getsym();
-		expression(fsys);				//此时栈顶为一个地址
+		shift(fsys);				//此时栈顶为一个地址
 		if (sym == SYM_BECOMES)
 		{
 			getsym();
@@ -900,7 +972,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 		{
 			error(13); // ':=' expected.
 		}
-		expression(fsys);				//栈顶为一个表达式的值
+		shift(fsys);				//栈顶为一个表达式的值
 		gen(STOA, 0, 0);
 	}
 
@@ -1050,7 +1122,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 		}
 		else{
 			int param_count = 0;
-			expression(fsys);
+			shift(fsys);
 			param_count += 1;
 			while(sym != SYM_RPAREN){
 				if(sym != SYM_COMMA){
@@ -1059,7 +1131,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 				}
 				else{
 					getsym();
-					expression(fsys);
+					shift(fsys);
 					param_count += 1;
 				}
 			}
@@ -1085,7 +1157,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 		}
 		else{
 			int param_count = 0;
-			expression(fsys);
+			shift(fsys);
 			param_count += 1;
 			while(sym != SYM_RPAREN){
 				if(sym != SYM_COMMA){
@@ -1094,7 +1166,7 @@ void statement(symset fsys)			//语句,加入了指针和数组的赋值，modif
 				}
 				else{
 					getsym();
-					expression(fsys);
+					shift(fsys);
 					param_count += 1;
 					while(sym == SYM_NULL) getsym();
 				}
@@ -1316,6 +1388,15 @@ void interpret()
 					continue;
 				}
 				stack[top] /= stack[top + 1];
+				break;
+            // 增加左移右移运算符实现
+            case OPR_SHL:
+				top--;
+				stack[top] <<= stack[top + 1];
+				break;
+			case OPR_SHR:
+				top--;
+				stack[top] >>= stack[top + 1];
 				break;
 			case OPR_ODD:
 				stack[top] %= 2;
