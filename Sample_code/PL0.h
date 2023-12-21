@@ -65,7 +65,14 @@ enum symtype			//当前读到字符(串的类型)
 	SYM_CALLSTACK,
 	//新增关键字break,continue, by tian
 	SYM_BREAK,
-	SYM_CONTINUE
+	SYM_CONTINUE,
+    // 补充行注释符 by wdy
+    SYM_LINECOMMENT,	   // //
+	SYM_LEFTBLOCKCOMMENT,  // /*
+	SYM_RIGHTBLOCKCOMMENT, // */
+    // 补充左右移运算符
+	SYM_SHL, // <<
+	SYM_SHR	 // >>
 };
 
 enum idtype
@@ -87,7 +94,9 @@ enum oprcode
 	OPR_RET, OPR_NEG, OPR_ADD, OPR_MIN,
 	OPR_MUL, OPR_DIV, OPR_ODD, OPR_EQU,
 	OPR_NEQ, OPR_LES, OPR_LEQ, OPR_GTR,
-	OPR_GEQ
+	OPR_GEQ, 
+    // 补充左右移运算符 by wdy
+    OPR_SHL, OPR_SHR
 };
 
 
@@ -132,7 +141,7 @@ char* err_msg[] =
 /* 28 */    "Incorrect pc",
 /* 29 */    "Incorrect paramlist",
 /* 30 */    "variable or procedure expected",
-/* 31 */    "",
+/* 31 */    "Nested comments", // 嵌套注释 add by wdy
 /* 32 */    "There are too many levels.",
 /* 33 */    "break statement not within a loop",
 /* 34 */    "continue statement not within a loop"

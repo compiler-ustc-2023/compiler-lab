@@ -1,7 +1,11 @@
 var brr[4][4][4];
 var i,j;
 begin
-brr[1][2][0] := 99;
+i := 1;
+brr[1][2][0] := 99 << i; // line comments
+/*
+block comments
+*/
 i := brr[1][2][0];
 j := i;
 j := *(*(*(brr + 1) + 2));
