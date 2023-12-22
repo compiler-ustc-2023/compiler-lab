@@ -1737,8 +1737,8 @@ int main()
         hbin = fopen("hbin.txt", "w");
         for (i = 0; i < cx; i++)
             // 为什么框架这里要用 fwrite ? 就为了展现这是汇编代码吗？
-            // fwrite(&code[i], sizeof(instruction), 1, hbin);
-            fprintf(hbin, "%d %d %d\n", code[i].f, code[i].l, code[i].a);
+            fwrite(&code[i], sizeof(instruction), 1, hbin);
+            // fprintf(hbin, "%d %d %d\n", code[i].f, code[i].l, code[i].a);
         fclose(hbin);
     }
     if (err == 0)
