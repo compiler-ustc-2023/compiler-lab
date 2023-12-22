@@ -938,32 +938,57 @@ void condition(symset fsys) // 生成条件表达式
     }         // else
 } // condition
 
+// void end_condition(int JPcx)
+// {
+//     // 回填JMP_and跳转地址
+//     while (sign_logic_and > 0)
+//     {
+//         code[cx_logic_and[sign_logic_and--]].a = JPcx;
+//     }
+// }
+
 //////////////////////////////////////////////////////////////////////
 // 生成逻辑表达式，add by wy
 void logic_and_expression(symset fsys)
 {
+    int sign = sign_logic_and;
     symset set = uniteset(fsys, createset(SYM_AND, SYM_NULL));
     condition(set);
     while (sym == SYM_AND)
     {
+        sign_logic_and++; // 记录逻辑与的计算次数
+        cx_logic_and[sign_logic_and] = cx;
+        gen(JZ, 0, 0);
         getsym();
         condition(set);
         gen(OPR, 0, OPR_AND);
     } // while
     destroyset(set);
+    while (sign_logic_and > sign)
+    {
+        code[cx_logic_and[sign_logic_and--]].a = cx;
+    }
 }
 
 void logic_or_expression(symset fsys)
 {
+    int sign = sign_logic_or;
     symset set = uniteset(fsys, createset(SYM_OR, SYM_NULL));
     logic_and_expression(set);
     while (sym == SYM_OR)
     {
+        sign_logic_or++; // 记录逻辑或的计算次数
+        cx_logic_or[sign_logic_or] = cx;
+        gen(JNZ, 0, 0);
         getsym();
         logic_and_expression(set);
         gen(OPR, 0, OPR_OR);
     } // while
     destroyset(set);
+    while (sign_logic_or > sign)
+    {
+        code[cx_logic_or[sign_logic_or--]].a = cx;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1633,6 +1658,15 @@ void interpret()
             if (stack[top] == 0)
                 pc = i.a;
             top--;
+            break;
+        // 添加JZ和JNZ指令
+        case JZ:
+            if (stack[top] == 0)
+                pc = i.a;
+            break;
+        case JNZ:
+            if (stack[top] != 0)
+                pc = i.a;
             break;
         } // switch
     } while (pc);

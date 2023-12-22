@@ -70,12 +70,12 @@ enum symtype // 当前读到字符(串的类型)
     SYM_LEFTBLOCKCOMMENT,  // /*
     SYM_RIGHTBLOCKCOMMENT, // */
     // 补充左右移运算符
-    SYM_SHL,               // <<
-    SYM_SHR,               // >>
+    SYM_SHL, // <<
+    SYM_SHR, // >>
     // 补充逻辑运算符, by wy
-    SYM_AND,               // &&
-    SYM_OR,                // ||
-    SYM_NOT                // !
+    SYM_AND, // &&
+    SYM_OR,  // ||
+    SYM_NOT  // !
 };
 
 enum idtype
@@ -101,7 +101,10 @@ enum opcode
     JPC,
     STOA,
     LODA,
-    LEA
+    LEA,
+    // 新增指令，by wy
+    JZ,
+    JNZ
 };
 
 enum oprcode
@@ -190,6 +193,11 @@ int tx = 0;                 // 当前变量表的下标
 
 char line[80]; // 当前解析指令行，长度为ll，以空格作为结束标记
 
+int sign_logic_and = 0; // 逻辑与的标记，用于逻辑与的短路 by wy
+int sign_logic_or = 0;  // 逻辑或的标记，用于逻辑或的短路 by wy
+int sign_condition = 0; // add by wy
+int cx_logic_and[100], cx_logic_or[100];
+
 int loop_level = 0;
 int break_mark[MAXLEVEL][CXMAX];
 int continue_mark[MAXLEVEL][CXMAX];
@@ -236,10 +244,10 @@ char csym[NSYM + 1] =
 // 新增指令LODA,将栈顶指向的值取出来替换掉当前栈顶
 // 新增指令LEA,取变量地址于栈顶
 // modified by Lin
-#define MAXINS 11
+#define MAXINS 13
 char *mnemonic[MAXINS] =
     {
-        "LIT", "OPR", "LOD", "STO", "CAL", "INT", "JMP", "JPC", "STOA", "LODA", "LEA"};
+        "LIT", "OPR", "LOD", "STO", "CAL", "INT", "JMP", "JPC", "STOA", "LODA", "LEA", "JZ", "JNZ"}; // 新增JZ,JNZ指令,by wy
 
 typedef struct
 {
