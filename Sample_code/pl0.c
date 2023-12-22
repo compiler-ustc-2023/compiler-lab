@@ -1169,13 +1169,14 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         loop_level--; // 循环层次-1
         gen(JMP, 0, cx1);
         code[cx2].a = cx;
-        for (int i = 1; i <= continue_mark[loop_level][0]; i++)
-            code[continue_mark[loop_level][i]].a = cx1; // continue的回填，jmp至循环开始的条件判断处
-        for (int i = 1; i <= break_mark[loop_level][0]; i++)
-            code[break_mark[loop_level][i]].a = cx; // break的回填，jmp至循环结束后的下一行代码
+        for (int i = 1; i <= continue_mark[loop_level + 1][0]; i++)
+            code[continue_mark[loop_level + 1][i]].a = cx1; // continue的回填，jmp至循环开始的条件判断处
+        for (int i = 1; i <= break_mark[loop_level + 1][0]; i++)
+            code[break_mark[loop_level + 1][i]].a = cx; // break的回填，jmp至循环结束后的下一行代码
     }
     else if (sym == SYM_BREAK) // break by tian
     {
+        getsym();
         if (loop_level == 0)
         {
             error(33);
@@ -1188,6 +1189,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
     }
     else if (sym == SYM_CONTINUE) // continue by tian
     {
+        getsym();
         if (loop_level == 0)
         {
             error(34);

@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#define NRW 14       // 关键字的总数量
+#define NRW 16       // 关键字的总数量
 #define TXMAX 500    // length of identifier table
 #define MAXNUMLEN 14 // maximum number of digits in numbers
 #define NSYM 13      // maximum number of symbols in array ssym and csym,需要更改最大符号数数组括号
@@ -203,14 +203,18 @@ char *word[NRW + 1] = // word中记录了各种关键字，预留了word[0]来�
         "begin", "call", "const", "do", "end", "if",
         "odd", "procedure", "then", "var", "while",
         // 新增关键字print,random,CALLSTACK,by wu
-        "print", "random", "CALLSTACK"};
+        "print", "random", "CALLSTACK",
+        // 新增关键字break,continue by Tian
+        "break", "continue"};
 
 int wsym[NRW + 1] =
     {
         SYM_NULL, SYM_BEGIN, SYM_CALL, SYM_CONST, SYM_DO, SYM_END,
         SYM_IF, SYM_ODD, SYM_PROCEDURE, SYM_THEN, SYM_VAR, SYM_WHILE,
         // 新增关键字print,random,CALLSTACK,by wu
-        SYM_PRINT, SYM_RANDOM, SYM_CALLSTACK};
+        SYM_PRINT, SYM_RANDOM, SYM_CALLSTACK,
+        // 新增关键字break,continue by Tian
+        SYM_BREAK, SYM_CONTINUE};
 
 int ssym[NSYM + 1] =
     {
