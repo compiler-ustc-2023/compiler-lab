@@ -1310,7 +1310,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
     }
     else if (sym == SYM_CALLSTACK) // 内置函数 CALLSTACK的实现 by wu
     {
-        // TODO
+        getsym();
+        gen(CAL, 0, CALLSTACK_ADDR);
     }
     else if (sym == SYM_RANDOM) ////内置函数 random() 的实现 by wu
     {
@@ -1512,6 +1513,9 @@ void interpret()
     int stack[STACKSIZE];
     int top;       // top of stack,栈顶寄存器
     int b;         // program, base, and top-stack register, 函数栈bp
+    int temp_b;
+    int temp_pc;
+    int tran_i;
     instruction i; // instruction register,指令寄存器
 
     printf("Begin executing PL/0 program.\n");
@@ -1673,7 +1677,19 @@ void interpret()
                 printf("\n");
                 break;
             case CALLSTACK_ADDR:
-                // TODO by wu
+                printf("system call: CALLSTACK\n");
+                // for(tran_i = 0; tran_i < top; tran_i ++){
+                //     printf("%d:%d\n", tran_i,stack[tran_i]);
+                // }
+                // printf("\n");
+                temp_b = b;
+                temp_pc = pc;
+                while(temp_b > 0){
+                    printf("bp:%d   ",temp_b);
+                    printf("PC: %d\n",temp_pc);
+                    temp_pc = stack[temp_b+2];
+                    temp_b = stack[temp_b+1];
+                }
                 break;
             default:
                 if (i.a >= 0)
