@@ -234,10 +234,27 @@ void getsym(void)
     // 添加取地址符号，add by Lin
     else if (ch == '&')
     {
-        sym = SYM_ADDRESS;
         getch();
+        if (ch == '&')
+        {
+            sym = SYM_AND; // && add by wy
+            getch();
+        }
+        else
+        {
+            sym = SYM_ADDRESS;
+        }
     }
-
+    // 添加逻辑运算符||
+    else if (ch == '|')
+    {
+        getch();
+        if (ch == '|')
+        {
+            sym = SYM_OR; // || add by wy
+            getch();
+        }
+    }
     else
     { // other tokens
         i = NSYM;
@@ -822,7 +839,7 @@ void term(symset fsys) // 生成项
 } // term
 
 //////////////////////////////////////////////////////////////////////
-void expression(symset fsys) // 生成表达式
+void expression(symset fsys) // 生成表达式, 只包含加减的算数表达式，add by wy
 {
     int addop;
     symset set;
@@ -889,7 +906,7 @@ void condition(symset fsys) // 生成条件表达式
         destroyset(set);
         if (!inset(sym, relset))
         {
-            error(20);
+            // error(20); //注释掉, 可以没有关系运算, by wy
         }
         else
         {
@@ -922,6 +939,34 @@ void condition(symset fsys) // 生成条件表达式
 } // condition
 
 //////////////////////////////////////////////////////////////////////
+// 生成逻辑表达式，add by wy
+void logic_and_expression(symset fsys)
+{
+    symset set = uniteset(fsys, createset(SYM_AND, SYM_NULL));
+    condition(set);
+    while (sym == SYM_AND)
+    {
+        getsym();
+        condition(set);
+        gen(OPR, 0, OPR_AND);
+    } // while
+    destroyset(set);
+}
+
+void logic_or_expression(symset fsys)
+{
+    symset set = uniteset(fsys, createset(SYM_OR, SYM_NULL));
+    logic_and_expression(set);
+    while (sym == SYM_OR)
+    {
+        getsym();
+        logic_and_expression(set);
+        gen(OPR, 0, OPR_OR);
+    } // while
+    destroyset(set);
+}
+
+//////////////////////////////////////////////////////////////////////
 void statement(symset fsys) // 语句,加入了指针和数组的赋值，modified by Lin
 {
     int i, cx1, cx2;
@@ -945,7 +990,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         if (sym == SYM_BECOMES)
         {
             getsym();
-            shift(fsys);
+            // shift(fsys);
+            logic_or_expression(fsys); // 逻辑表达式 add by wy
             if (i)
             {
                 gen(STO, level - mk->level, mk->address);
@@ -964,7 +1010,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
                 else
                 {
                     getsym();
-                    shift(fsys);
+                    // shift(fsys);
+                    logic_or_expression(fsys); // 逻辑表达式 add by wy
                 }
                 int space = 1;                        // 当前维度的数组空间
                 for (int j = dim; j < ARRAY_DIM; j++) // 计算当前维的空间
@@ -993,7 +1040,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
             {
                 error(13); // ':=' expected.
             }
-            shift(fsys);
+            // shift(fsys);
+            logic_or_expression(fsys); // 逻辑表达式 add by wy
             gen(STOA, level - mk->level, mk->address);
         }
         else
@@ -1004,7 +1052,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
     else if (sym == SYM_TIMES) // 给指针指向内容赋值，add by Lin
     {
         getsym();
-        shift(fsys); // 此时栈顶为一个地址
+        // shift(fsys); // 此时栈顶为一个地址
+        logic_or_expression(fsys); // 逻辑表达式 add by wy
         if (sym == SYM_BECOMES)
         {
             getsym();
@@ -1013,7 +1062,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         {
             error(13); // ':=' expected.
         }
-        shift(fsys); // 栈顶为一个表达式的值
+        // shift(fsys); // 栈顶为一个表达式的值
+        logic_or_expression(fsys); // 逻辑表达式 add by wy
         gen(STOA, 0, 0);
     }
 
@@ -1048,7 +1098,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         getsym();
         set1 = createset(SYM_THEN, SYM_DO, SYM_NULL);
         set = uniteset(set1, fsys);
-        condition(set);
+        logic_or_expression(set); // 逻辑表达式 add by wy
         destroyset(set1);
         destroyset(set);
         if (sym == SYM_THEN)
@@ -1099,7 +1149,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         getsym();
         set1 = createset(SYM_DO, SYM_NULL);
         set = uniteset(set1, fsys);
-        condition(set);
+        logic_or_expression(set); // 逻辑表达式 add by wy
         destroyset(set1);
         destroyset(set);
         cx2 = cx;
@@ -1119,13 +1169,14 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         loop_level--; // 循环层次-1
         gen(JMP, 0, cx1);
         code[cx2].a = cx;
-        for (int i = 1; i <= continue_mark[loop_level][0]; i++)
-            code[continue_mark[loop_level][i]].a = cx1; // continue的回填，jmp至循环开始的条件判断处
-        for (int i = 1; i <= break_mark[loop_level][0]; i++)
-            code[break_mark[loop_level][i]].a = cx; // break的回填，jmp至循环结束后的下一行代码
+        for (int i = 1; i <= continue_mark[loop_level + 1][0]; i++)
+            code[continue_mark[loop_level + 1][i]].a = cx1; // continue的回填，jmp至循环开始的条件判断处
+        for (int i = 1; i <= break_mark[loop_level + 1][0]; i++)
+            code[break_mark[loop_level + 1][i]].a = cx; // break的回填，jmp至循环结束后的下一行代码
     }
     else if (sym == SYM_BREAK) // break by tian
     {
+        getsym();
         if (loop_level == 0)
         {
             error(33);
@@ -1138,6 +1189,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
     }
     else if (sym == SYM_CONTINUE) // continue by tian
     {
+        getsym();
         if (loop_level == 0)
         {
             error(34);
@@ -1164,7 +1216,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         else
         {
             int param_count = 0;
-            shift(fsys);
+            // shift(fsys);
+            logic_or_expression(fsys); // 逻辑表达式 add by wy
             param_count += 1;
             while (sym != SYM_RPAREN)
             {
@@ -1176,7 +1229,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
                 else
                 {
                     getsym();
-                    shift(fsys);
+                    // shift(fsys);
+                    logic_or_expression(fsys); // 逻辑表达式 add by wy
                     param_count += 1;
                 }
             }
@@ -1205,7 +1259,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         else
         {
             int param_count = 0;
-            shift(fsys);
+            // shift(fsys);
+            logic_or_expression(fsys); // 逻辑表达式 add by wy
             param_count += 1;
             while (sym != SYM_RPAREN)
             {
@@ -1217,7 +1272,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
                 else
                 {
                     getsym();
-                    shift(fsys);
+                    // shift(fsys);
+                    logic_or_expression(fsys); // 逻辑表达式 add by wy
                     param_count += 1;
                     while (sym == SYM_NULL)
                         getsym();
@@ -1472,6 +1528,15 @@ void interpret()
             case OPR_LEQ:
                 top--;
                 stack[top] = stack[top] <= stack[top + 1];
+                break;
+            // 增加逻辑运算符, by wy
+            case OPR_AND:
+                top--;
+                stack[top] = stack[top] && stack[top + 1];
+                break;
+            case OPR_OR:
+                top--;
+                stack[top] = stack[top] || stack[top + 1];
                 break;
             } // switch
             break;
