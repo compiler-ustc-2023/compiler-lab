@@ -966,6 +966,51 @@ void logic_or_expression(symset fsys)
     destroyset(set);
 }
 
+// 增加对连续赋值表达式的支持
+// 简单起见，无法对非简单变量进行连续赋值
+// 比如不能写 a := b[1][2] = 0;
+// 但是最后一个右值可以是任意表达式
+// 比如 a := b := c[2][1];
+mask *assign_sequence[10];
+int	  curr_assign_index = 0;
+int	  get_assign_num() {
+	  int assign_num = 0;
+	  for (int i = 0; i < ll; i++) {
+		  if (line[i] == ':' && line[i + 1] == '=') { assign_num++; }
+	  }
+	  return assign_num;
+}
+//////////////////////////////////////////////////////////////////////
+void assign_statement(symset fsys) { // 生成赋值语句
+	int i;
+	int assign_num = get_assign_num();
+	if (assign_num >= 10) { error(33); }
+	for (int i = 1; i < assign_num; i++) {
+		if (sym == SYM_IDENTIFIER) {
+			mask *mk;
+			if (!(i = position(id, start_level))) {
+				error(11); // Undeclared identifier.
+			}
+			if (sym == ID_VARIABLE) {
+				mk									 = (mask *)&table[i];
+				assign_sequence[curr_assign_index++] = mk;
+			} else {
+				error(12); // Illegal assignment.
+			}
+			getsym();
+			if (sym == SYM_BECOMES) { getsym(); }
+		} else {
+			error(12);
+		}
+	}
+	// 处理最后一个右值
+	logic_or_expression(fsys); // 此时栈顶为最后一个表达式的值
+	for (int j = curr_assign_index - 1; j >= 0; j--) {
+		mask* mk = assign_sequence[j];
+		gen(STO, level - mk->level, mk->address);
+	}
+	curr_assign_index = 0;  // 恢复现场，准备处理下一个赋值语句
+}
 //////////////////////////////////////////////////////////////////////
 void statement(symset fsys) // 语句,加入了指针和数组的赋值，modified by Lin
 {
@@ -987,16 +1032,15 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         }
         getsym();
         mk = (mask *)&table[i];
-        if (sym == SYM_BECOMES)
-        {
-            getsym();
-            // shift(fsys);
-            logic_or_expression(fsys); // 逻辑表达式 add by wy
-            if (i)
-            {
-                gen(STO, level - mk->level, mk->address);
+        if (sym == SYM_BECOMES) {
+			getsym();
+			// shift(fsys);
+			assign_statement(fsys);
+			if (i) { 
+                gen(STO, level - mk->level, mk->address); 
+                gen(POP, 0, 0); // 所有调用结束之后，恢复栈顶
             }
-        }
+		}
         else if (sym == SYM_LEFTBRACKET) // 调用了数组元素
         {
             gen(LEA, level - mk->level, mk->address); // 将数组基地址置于栈顶
@@ -1559,7 +1603,7 @@ void interpret()
         case STO:
             stack[base(stack, b, i.l) + i.a] = stack[top];
             printf("%d\n", stack[top]);
-            top--;
+            // top--; 使用 POP 代替
             break;
         case CAL:
             switch (i.a) // 先判断是不是内置函数 by wu
@@ -1632,6 +1676,9 @@ void interpret()
         case JPC:
             if (stack[top] == 0)
                 pc = i.a;
+            top--;
+            break;
+        case POP:
             top--;
             break;
         } // switch
