@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#define NRW 16       // 关键字的总数量
+#define NRW 14       // 关键字的总数量
 #define TXMAX 500    // length of identifier table
 #define MAXNUMLEN 14 // maximum number of digits in numbers
 #define NSYM 13      // maximum number of symbols in array ssym and csym,需要更改最大符号数数组括号
@@ -69,9 +69,13 @@ enum symtype // 当前读到字符(串的类型)
     SYM_LINECOMMENT,       // //
     SYM_LEFTBLOCKCOMMENT,  // /*
     SYM_RIGHTBLOCKCOMMENT, // */
-                           // 补充左右移运算符
+    // 补充左右移运算符
     SYM_SHL,               // <<
-    SYM_SHR                // >>
+    SYM_SHR,               // >>
+    // 补充逻辑运算符, by wy
+    SYM_AND,               // &&
+    SYM_OR,                // ||
+    SYM_NOT                // !
 };
 
 enum idtype
@@ -117,7 +121,11 @@ enum oprcode
     OPR_GEQ,
     // 补充左右移运算符 by wdy
     OPR_SHL,
-    OPR_SHR
+    OPR_SHR,
+    // 补充逻辑运算符, by wy
+    OPR_AND,
+    OPR_OR,
+    OPR_NOT
 };
 
 typedef struct
@@ -194,15 +202,18 @@ char *word[NRW + 1] = // word中记录了各种关键字，预留了word[0]来�
         "", /* place holder */
         "begin", "call", "const", "do", "end", "if",
         "odd", "procedure", "then", "var", "while",
-        // 新增关键字print,random,CALLSTACK,by wu
-        "print", "random", "CALLSTACK"};
+        "print", "random", "CALLSTACK",
+        // 新增关键字break,continue by Tian
+        "break", "continue"};
 
 int wsym[NRW + 1] =
     {
         SYM_NULL, SYM_BEGIN, SYM_CALL, SYM_CONST, SYM_DO, SYM_END,
         SYM_IF, SYM_ODD, SYM_PROCEDURE, SYM_THEN, SYM_VAR, SYM_WHILE,
         // 新增关键字print,random,CALLSTACK,by wu
-        SYM_PRINT, SYM_RANDOM, SYM_CALLSTACK};
+        SYM_PRINT, SYM_RANDOM, SYM_CALLSTACK,
+        // 新增关键字break,continue by Tian
+        SYM_BREAK, SYM_CONTINUE};
 
 int ssym[NSYM + 1] =
     {
