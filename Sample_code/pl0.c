@@ -1714,6 +1714,7 @@ void interpret()
         case JNZ:
             if (stack[top] != 0)
                 pc = i.a;
+            break;
         } // switch
     } while (pc);
 
