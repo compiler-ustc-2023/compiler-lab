@@ -1,0 +1,10 @@
+var brr[4][4][4];
+var i,j;
+begin
+i := 1;
+brr[1][2][0] := 99 << i; // line comments
+i:=j:=0;
+i := j :=  brr[1][2][0];
+j := i;
+j := *(*(*(brr + 1) + 2));
+end.

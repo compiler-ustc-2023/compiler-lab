@@ -102,6 +102,7 @@ enum opcode
     STOA,
     LODA,
     LEA,
+    POP,
     // 新增指令，by wy
     JZ,
     JNZ
@@ -244,10 +245,10 @@ char csym[NSYM + 1] =
 // 新增指令LODA,将栈顶指向的值取出来替换掉当前栈顶
 // 新增指令LEA,取变量地址于栈顶
 // modified by Lin
-#define MAXINS 13
+#define MAXINS 14
 char *mnemonic[MAXINS] =
     {
-        "LIT", "OPR", "LOD", "STO", "CAL", "INT", "JMP", "JPC", "STOA", "LODA", "LEA", "JZ", "JNZ"}; // 新增JZ,JNZ指令,by wy
+        "LIT", "OPR", "LOD", "STO", "CAL", "INT", "JMP", "JPC", "STOA", "LODA", "LEA", "POP", "JZ", "JNZ"}; // 新增JZ,JNZ指令,by wy
 
 typedef struct
 {
