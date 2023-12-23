@@ -1,0 +1,9 @@
+var i;
+var j;
+begin
+  i := 2;
+  j := 0;
+  do
+    j := j + i
+  while i <= 1;
+end.

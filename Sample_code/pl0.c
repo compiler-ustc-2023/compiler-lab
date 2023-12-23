@@ -1313,8 +1313,47 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         for (int i = 1; i <= break_mark[loop_level + 1][0]; i++)
             code[break_mark[loop_level + 1][i]].a = cx; // break的回填，jmp至循环结束后的下一行代码
     }
+    else if (sym == SYM_DO)
+    { // do-while statement, add by tq
+        cx1 = cx;
+        getsym();
+        set1 = createset(SYM_WHILE, SYM_NULL);
+        set = uniteset(set1, fsys);
+        loop_level++;
+        break_mark[loop_level][0] = 0;
+        continue_mark[loop_level][0] = 0;
+        statement(set);
+        loop_level--;
+        destroyset(set1);
+        destroyset(set);
+        if (sym != SYM_WHILE)
+        {
+            error(40);
+        }
+        else
+        {
+            getsym();
+            cx2 = cx;
+            set1 = createset(SYM_SEMICOLON, SYM_NULL);
+            set = uniteset(set1, fsys);
+            logic_or_expression(set);
+            destroyset(set1);
+            destroyset(set);
+            gen(JPC, 0, cx+2);
+            gen(JMP, 0, cx1);
+        }
+        for (int i = 1; i <= continue_mark[loop_level + 1][0]; i++)
+            code[continue_mark[loop_level + 1][i]].a = cx2; // continue的回填，jmp至条件判断处
+        for (int i = 1; i <= break_mark[loop_level + 1][0]; i++)
+            code[break_mark[loop_level + 1][i]].a = cx; // break的回填，jmp至循环结束后的下一行代码
+        if(sym != SYM_SEMICOLON)
+        {
+            error(17);
+        }
+        getsym();
+    }
     else if (sym == SYM_FOR)
-    { // for statement
+    { // for statement, add by tq
         getsym();
         if(sym != SYM_LPAREN)
         {
@@ -1345,7 +1384,11 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
             gen(JMP, 0, 0);
             set1 = createset(SYM_RPAREN, SYM_NULL);
             set = uniteset(set1, fsys);
+            loop_level++;
+        break_mark[loop_level][0] = 0;
+        continue_mark[loop_level][0] = 0;
             statement(set);
+            loop_level--;
             destroyset(set);
             destroyset(set1);
             gen(JMP, 0, cx1);

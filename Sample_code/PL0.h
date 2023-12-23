@@ -62,7 +62,7 @@ enum symtype // 当前读到字符(串的类型)
     SYM_PRINT,
     SYM_RANDOM,
     SYM_CALLSTACK,
-    // 新增关键字break,continue, by tian
+    // 新增关键字break,continue, by tq
     SYM_BREAK,
     SYM_CONTINUE,
     // 补充行注释符 by wdy
@@ -76,7 +76,7 @@ enum symtype // 当前读到字符(串的类型)
     SYM_AND, // &&
     SYM_OR,  // ||
     SYM_NOT,  // !
-    // 新增关键字for
+    // 新增关键字for, by tq
     SYM_FOR  // for
 };
 
@@ -183,7 +183,8 @@ char *err_msg[] =
         /* 36 */ "Too many parameters",                                // add by wy
         /* 37 */ "Too few parameters",                                 // add by wy
         /* 38 */ "The parameter is expected but other words appear",   // add by wy
-        /* 39 */ "The procedure loses a parameter or has an extra ','" // add by wy
+        /* 39 */ "The procedure loses a parameter or has an extra ','",// add by wy
+        /* 40 */ "Expected 'while' here." // do-while missing "while"
 };
 
 //////////////////////////////////////////////////////////////////////
