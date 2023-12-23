@@ -1039,7 +1039,7 @@ void assign_statement(symset fsys) { // 生成赋值语句
 //////////////////////////////////////////////////////////////////////
 void statement(symset fsys) // 语句,加入了指针和数组的赋值，modified by Lin
 {
-    int i, cx1, cx2;
+    int i, cx1, cx2, cx3;
     symset set1, set;
     if (sym == SYM_IDENTIFIER) // 修改，加入数组的赋值，modified by Lin
     {                          // variable assignment
@@ -1240,6 +1240,61 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         code[cx2].a = cx;
         for (int i = 1; i <= continue_mark[loop_level + 1][0]; i++)
             code[continue_mark[loop_level + 1][i]].a = cx1; // continue的回填，jmp至循环开始的条件判断处
+        for (int i = 1; i <= break_mark[loop_level + 1][0]; i++)
+            code[break_mark[loop_level + 1][i]].a = cx; // break的回填，jmp至循环结束后的下一行代码
+    }
+    else if (sym == SYM_FOR)
+    { // for statement
+        getsym();
+        if(sym != SYM_LPAREN)
+        {
+            error(26);
+        }
+        getsym();
+        statement(fsys);
+        if(sym != SYM_SEMICOLON)
+        {
+            error(5);
+        }
+        else
+        {
+            cx1 = cx;
+            getsym();
+            condition(fsys);
+            cx3 = cx;
+            gen(JPC, 0, 0);
+        }
+        if(sym != SYM_SEMICOLON)
+        {
+            error(5);
+        }
+        else
+        {
+            getsym();
+            cx2 = cx;
+            gen(JMP, 0, 0);
+            set1 = createset(SYM_RPAREN, SYM_NULL);
+            set = uniteset(set1, fsys);
+            statement(set);
+            destroyset(set);
+            destroyset(set1);
+            gen(JMP, 0, cx1);
+            code[cx2].a = cx;
+        }
+        if(sym != SYM_RPAREN)
+        {
+            error(22);
+        }
+        getsym();
+        loop_level++; // 循环层次+1
+        break_mark[loop_level][0] = 0;
+        continue_mark[loop_level][0] = 0;
+        statement(fsys);
+        loop_level--; // 循环层次-1
+        gen(JMP, 0, cx2+1);
+        code[cx3].a = cx;
+        for (int i = 1; i <= continue_mark[loop_level + 1][0]; i++)
+            code[continue_mark[loop_level + 1][i]].a = cx2; // continue的回填，jmp至循环结束的循环执行语句
         for (int i = 1; i <= break_mark[loop_level + 1][0]; i++)
             code[break_mark[loop_level + 1][i]].a = cx; // break的回填，jmp至循环结束后的下一行代码
     }
