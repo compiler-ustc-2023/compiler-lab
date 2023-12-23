@@ -178,7 +178,13 @@ char *err_msg[] =
         /* 31 */ "Nested comments", // 嵌套注释 add by wdy
         /* 32 */ "There are too many levels.",
         /* 33 */ "break statement not within a loop",
-        /* 34 */ "continue statement not within a loop"};
+        /* 34 */ "continue statement not within a loop",
+        /* 35 */ "The procedure name should be followed by ()",       // add by wy
+        /* 36 */ "Too many parameters",                                // add by wy
+        /* 37 */ "Too few parameters",                                 // add by wy
+        /* 38 */ "The parameter is expected but other words appear",   // add by wy
+        /* 39 */ "The procedure loses a parameter or has an extra ','" // add by wy
+};
 
 //////////////////////////////////////////////////////////////////////
 char ch;               // 最后一次读到的字符
@@ -256,6 +262,13 @@ char *mnemonic[MAXINS] =
     {
         "LIT", "OPR", "LOD", "STO", "CAL", "INT", "JMP", "JPC", "STOA", "LODA", "LEA", "POP", "JZ", "JNZ"}; // 新增JZ,JNZ指令,by wy
 
+// 增加procedure处理, add by wy
+typedef struct
+{
+    int n;
+    int *kind;
+} procedure_params, *ptr2param;
+
 typedef struct
 {
     char name[MAXIDLEN + 1];
@@ -263,8 +276,9 @@ typedef struct
     int value;
     // 数组每一维的维度，最高为3维，add by Lin
     int dimension[3];
-    int depth; // 指针深度
-} comtab;      // 常量
+    int depth;                // 指针深度
+    ptr2param para_procedure; // 指向参数表的指针, add by wy
+} comtab;                     // 常量
 
 comtab table[TXMAX]; // 变量表,常量包括name，kind和value，变量和函数包括name,kind,level和address
 
@@ -277,6 +291,7 @@ typedef struct
     // 数组每一维的维度，最高为3维，add by Lin
     int dimension[3];
     int depth; // 指针深度
+    ptr2param para_procedure; // 指向参数表的指针, add by wy
 } mask;        // 变量或函数，和常量共用存储空间，将value的位置用来存储层次level和地址address
 
 FILE *infile;

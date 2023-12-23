@@ -1036,6 +1036,68 @@ void assign_statement(symset fsys) { // 生成赋值语句
 	}
 	curr_assign_index = 0;  // 恢复现场，准备处理下一个赋值语句
 }
+
+void call_procedure(int i)
+{
+    ptr2param para = table[i].para_procedure;
+    getsym();
+    if (sym != SYM_LPAREN)
+        error(35);
+    else
+    {
+        int param_num = para->n; 
+        int index;
+        getsym();
+        while (sym != SYM_RPAREN && param_num--)
+        {
+            if (sym == SYM_IDENTIFIER)
+            {
+                if (!(index = position(id, start_level)))
+                {
+                    error(11);
+                    break;
+                }
+                else
+                {
+                    if (para->kind[param_num] == ID_VARIABLE)
+                    {
+                        mask *mk;
+                        mk = (mask *)&table[index];
+                        if (mk->kind == ID_VARIABLE)
+                        {
+                            gen(LOD, level - mk->level, mk->address);
+                            getsym();
+                        }
+                    }
+                }
+            }
+            else if (sym == SYM_NUMBER)
+            {
+                gen(LIT, 0, num);
+                getsym();
+            }
+            if (sym == SYM_COMMA)
+            {
+                getsym();
+            }
+        }
+        if (sym == SYM_RPAREN && param_num == 0)
+        {
+            mask *mk;
+            mk = (mask *)&table[i];
+            gen(CAL, level - mk->level, mk->address);
+        }
+        else if (param_num == 0)
+        {
+            error(36);
+        }
+        else if (sym == SYM_RPAREN)
+        {
+            error(37);
+        }
+    }
+}
+
 //////////////////////////////////////////////////////////////////////
 void statement(symset fsys) // 语句,加入了指针和数组的赋值，modified by Lin
 {
@@ -1151,9 +1213,10 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
             }
             else if (table[i].kind == ID_PROCEDURE)
             {
-                mask *mk;
-                mk = (mask *)&table[i];
-                gen(CAL, level - mk->level, mk->address);
+                // mask *mk;
+                // mk = (mask *)&table[i];
+                // gen(CAL, level - mk->level, mk->address);
+                call_procedure(i); // 调用函数, add by wy
             }
             else
             {
@@ -1365,7 +1428,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
     }
     else if (sym == SYM_CALLSTACK) // 内置函数 CALLSTACK的实现 by wu
     {
-        // TODO
+        getsym();
+        gen(CAL, 0, CALLSTACK_ADDR);
     }
     else if (sym == SYM_RANDOM) ////内置函数 random() 的实现 by wu
     {
@@ -1415,17 +1479,17 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
 } // statement
 
 //////////////////////////////////////////////////////////////////////
-void block(symset fsys) // 生成一个程序体
+void block(symset fsys, int para_number) // 生成一个程序体, para_number为当前程序体参数个数
 {
     int cx0; // initial code index
     mask *mk;
     int block_dx;
-    int savedTx;
+    int savedTx, savedDx;
     symset set1, set;
 
     dx = 3;
     block_dx = dx;
-    mk = (mask *)&table[tx];
+    mk = (mask *)&table[tx - para_number]; // modify by wy
     mk->address = cx;
     gen(JMP, 0, 0); // 产生第一条指令JMP 0, 0
     if (level > MAXLEVEL)
@@ -1480,6 +1544,7 @@ void block(symset fsys) // 生成一个程序体
         block_dx = dx; // save dx before handling procedure call!
         while (sym == SYM_PROCEDURE)
         { // procedure declarations
+            int para_num = 0;
             getsym();
             if (sym == SYM_IDENTIFIER)
             {
@@ -1490,6 +1555,63 @@ void block(symset fsys) // 生成一个程序体
             {
                 error(4); // There must be an identifier to follow 'const', 'var', or 'procedure'.
             }
+            level++;
+            savedTx = tx;
+            ptr2param parameter;
+            if (sym == SYM_LPAREN) // get parameters
+            {
+                savedDx = dx;
+                getsym();
+                while (sym != SYM_RPAREN)
+                {
+                    if (sym == SYM_VAR)
+                    {
+                        getsym();
+                        para_num++;
+                        if (sym == SYM_IDENTIFIER)
+                        {
+                            enter(ID_VARIABLE, NULL, 0);
+                            getsym();
+                        }
+                    }
+                    else
+                    {
+                        printf("%d", sym);
+                        error(38);
+                        getsym();
+                    }
+                    if (sym == SYM_COMMA)
+                    {
+                        getsym();
+                        if (sym == SYM_RPAREN)
+                        {
+                            error(39);
+                        }
+                    }
+                }
+                if (para_num)
+                {
+                    mask *mk_p = (mask *)&table[tx - para_num];
+                    parameter = (ptr2param)malloc(sizeof(procedure_params));
+                    parameter->n = para_num;
+                    parameter->kind = (int *)malloc(para_num * sizeof(int));
+                    mk_p->para_procedure = parameter;
+                }
+                int i = 0;
+                for (i = 0; i < para_num; i++)
+                {
+                    mask *mk_p = (mask *)&table[tx - i];
+                    mk_p->address = -1 - i;
+                    parameter->kind[i] = mk_p->kind;
+                }
+                getsym();
+            }
+            else 
+            {
+                error(35);
+            }
+            dx = savedDx; // 恢复dx
+
 
             if (sym == SYM_SEMICOLON)
             {
@@ -1500,14 +1622,13 @@ void block(symset fsys) // 生成一个程序体
                 error(5); // Missing ',' or ';'.
             }
 
-            level++;
             savedTx = tx;
             set1 = createset(SYM_SEMICOLON, SYM_NULL);
             set = uniteset(set1, fsys);
-            block(set); // 生成子程序体
+            block(set, para_num); // 生成子程序体
             destroyset(set1);
             destroyset(set);
-            tx = savedTx; // 子程序分析完后将子程序的变量从符号表中“删除”
+            tx = savedTx - para_num; // 子程序分析完后将子程序的变量从符号表中“删除”
             level--;
 
             if (sym == SYM_SEMICOLON)
@@ -1515,7 +1636,7 @@ void block(symset fsys) // 生成一个程序体
                 getsym();
                 set1 = createset(SYM_IDENTIFIER, SYM_PROCEDURE, SYM_NULL);
                 set = uniteset(statbegsys, set1);
-                test(set, fsys, 6);
+                // test(set, fsys, 6);
                 destroyset(set1);
                 destroyset(set);
             }
@@ -1567,6 +1688,9 @@ void interpret()
     int stack[STACKSIZE];
     int top;       // top of stack,栈顶寄存器
     int b;         // program, base, and top-stack register, 函数栈bp
+    int temp_b;
+    int temp_pc;
+    int tran_i;
     instruction i; // instruction register,指令寄存器
 
     printf("Begin executing PL/0 program.\n");
@@ -1728,7 +1852,19 @@ void interpret()
                 printf("\n");
                 break;
             case CALLSTACK_ADDR:
-                // TODO by wu
+                printf("system call: CALLSTACK\n");
+                // for(tran_i = 0; tran_i < top; tran_i ++){
+                //     printf("%d:%d\n", tran_i,stack[tran_i]);
+                // }
+                // printf("\n");
+                temp_b = b;
+                temp_pc = pc;
+                while(temp_b > 0){
+                    printf("bp:%d   ",temp_b);
+                    printf("PC: %d\n",temp_pc);
+                    temp_pc = stack[temp_b+2];
+                    temp_b = stack[temp_b+1];
+                }
                 break;
             default:
                 if (i.a >= 0)
@@ -1809,7 +1945,7 @@ int main()
     set1 = createset(SYM_PERIOD, SYM_NULL);
     set2 = uniteset(declbegsys, statbegsys);
     set = uniteset(set1, set2);
-    block(set); // 对应实验文档中程序体生成
+    block(set, 0); // 对应实验文档中程序体生成
     destroyset(set1);
     destroyset(set2);
     destroyset(set);

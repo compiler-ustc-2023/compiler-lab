@@ -1,6 +1,12 @@
 var i;
 procedure p1;
     var i ;
+    procedure uncle;
+        var i;
+    begin
+        i := 1000;
+        CALLSTACK;
+    end;
     procedure p2;
         var i;
         procedure p3;
@@ -9,6 +15,8 @@ procedure p1;
             i := 3;
             print( ::i, p1::i, p2::i, i );
             print( ::i, ::p1::i, ::p1::p2::i, ::p1::p2::p3::i );
+            call uncle;
+            CALLSTACK;
         end;
     begin
         i := 2;
