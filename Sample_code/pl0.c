@@ -998,12 +998,19 @@ void logic_or_expression(symset fsys)
 // 比如 a := b := c[2][1];
 mask *assign_sequence[10];
 int	  curr_assign_index = 0;
-int	  get_assign_num() {
-	  int assign_num = 0;
-	  for (int i = 0; i < ll; i++) {
-		  if (line[i] == ':' && line[i + 1] == '=') { assign_num++; }
-	  }
-	  return assign_num;
+int   curr_read_index = 0; // 记录当前读取的位置，避免一行多个语句 by wdy
+/////////////////////////////////////////////////
+int	get_assign_num() {
+    int assign_num = 0;
+    for (int i = curr_read_index; i < ll; i++) {
+	    if (line[i] == ':' && line[i + 1] == '=') { assign_num++; }
+        else if(line[i] == ';'){
+            if(i == ll - 1) curr_read_index = 0;
+            else curr_read_index = i + 1;
+            break;
+        }
+	}
+	return assign_num;
 }
 //////////////////////////////////////////////////////////////////////
 void assign_statement(symset fsys) { // 生成赋值语句
