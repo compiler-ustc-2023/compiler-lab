@@ -11,7 +11,7 @@ begin
  ***r := 100;
  a[0] := &m;
  a[1] := p;
- print( * a[0] , * a[1] , m );
+ print( * a[0] , *a[1] , m );
  print();
  random(100);
  random(100);

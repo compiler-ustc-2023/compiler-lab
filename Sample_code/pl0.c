@@ -1044,7 +1044,7 @@ void assign_statement(symset fsys) { // 生成赋值语句
 	curr_assign_index = 0;  // 恢复现场，准备处理下一个赋值语句
 }
 
-void call_procedure(int i)
+void call_procedure(symset fsys ,int i)
 {
     ptr2param para = table[i].para_procedure;
     getsym();
@@ -1057,37 +1057,13 @@ void call_procedure(int i)
         getsym();
         while (sym != SYM_RPAREN && param_num--)
         {
-            if (sym == SYM_IDENTIFIER)
-            {
-                if (!(index = position(id, start_level)))
-                {
-                    error(11);
-                    break;
-                }
-                else
-                {
-                    if (para->kind[param_num] == ID_VARIABLE)
-                    {
-                        mask *mk;
-                        mk = (mask *)&table[index];
-                        if (mk->kind == ID_VARIABLE)
-                        {
-                            gen(LOD, level - mk->level, mk->address);
-                            getsym();
-                        }
-                    }
-                }
-            }
-            else if (sym == SYM_NUMBER)
-            {
-                gen(LIT, 0, num);
-                getsym();
-            }
+            shift(fsys);
             if (sym == SYM_COMMA)
             {
                 getsym();
             }
         }
+        gen(LIT, 0, para->n);
         if (sym == SYM_RPAREN && param_num == 0)
         {
             mask *mk;
@@ -1223,7 +1199,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
                 // mask *mk;
                 // mk = (mask *)&table[i];
                 // gen(CAL, level - mk->level, mk->address);
-                call_procedure(i); // 调用函数, add by wy
+                call_procedure(fsys,i); // 调用函数, add by wy
             }
             else
             {
@@ -1535,10 +1511,16 @@ void block(symset fsys, int para_number) // 生成一个程序体, para_number�
     mask *mk;
     int block_dx;
     int savedTx, savedDx;
+    int savedlevel;
     symset set1, set;
 
     dx = 3;
     block_dx = dx;
+    // int temp_para_num;
+    // for(temp_para_num = 0; temp_para_num < para_number; temp_para_num ++){
+    //     mk = (mask *)&table[tx - temp_para_num];
+    //     gen(STO, level - mk->level, mk->address);
+    // }
     mk = (mask *)&table[tx - para_number]; // modify by wy
     mk->address = cx;
     gen(JMP, 0, 0); // 产生第一条指令JMP 0, 0
@@ -1620,7 +1602,7 @@ void block(symset fsys, int para_number) // 生成一个程序体, para_number�
                         para_num++;
                         if (sym == SYM_IDENTIFIER)
                         {
-                            enter(ID_VARIABLE, NULL, 0);
+                            enter(ID_VARIABLE, NULL, 0);    //提前给函数实参占用位置，调用时往里填
                             getsym();
                         }
                     }
@@ -1639,20 +1621,19 @@ void block(symset fsys, int para_number) // 生成一个程序体, para_number�
                         }
                     }
                 }
-                if (para_num)
-                {
-                    mask *mk_p = (mask *)&table[tx - para_num];
-                    parameter = (ptr2param)malloc(sizeof(procedure_params));
-                    parameter->n = para_num;
-                    parameter->kind = (int *)malloc(para_num * sizeof(int));
-                    mk_p->para_procedure = parameter;
-                }
+                mask *mk_p = (mask *)&table[tx - para_num];
+                parameter = (ptr2param)malloc(sizeof(procedure_params));
+                parameter->n = para_num;
+                parameter->kind = (int *)malloc(para_num * sizeof(int));
+                parameter->name = (char **)malloc(para_number * sizeof(char*));
+                mk_p->para_procedure = parameter;
                 int i = 0;
                 for (i = 0; i < para_num; i++)
                 {
                     mask *mk_p = (mask *)&table[tx - i];
-                    mk_p->address = -1 - i;
+                    // mk_p->address = -1 - i;
                     parameter->kind[i] = mk_p->kind;
+                    parameter->name[i] = mk_p->name;
                 }
                 getsym();
             }
@@ -1903,10 +1884,6 @@ void interpret()
                 break;
             case CALLSTACK_ADDR:
                 printf("system call: CALLSTACK\n");
-                // for(tran_i = 0; tran_i < top; tran_i ++){
-                //     printf("%d:%d\n", tran_i,stack[tran_i]);
-                // }
-                // printf("\n");
                 temp_b = b;
                 temp_pc = pc;
                 while(temp_b > 0){
@@ -1919,6 +1896,16 @@ void interpret()
             default:
                 if (i.a >= 0)
                 {
+                    // for(tran_i = 0; tran_i <= top; tran_i ++){
+                    //     printf("%d:%d\n", tran_i,stack[tran_i]);
+                    // }
+                    // printf("\n");
+                    param_num = stack[top];
+                    while(param_num){
+                        stack[top+4+param_num] = stack[top-param_num];
+                        param_num--;
+                    }
+                    // printf("%d",stack[top]);
                     stack[top + 1] = base(stack, b, i.l); // 访问链
                     // generate new block mark
                     stack[top + 2] = b;  // 控制链
