@@ -7,18 +7,20 @@ var low;      //二分查找上下界
 var high;
 var mid;
 var ans;
-var u;
-var v;
+//var u;
+//var v;
 procedure exp(var u, var v);      //计算u的v次幂(用快速幂算法)
 begin
+  //u := 2;
+  //v := 25;
   print(u, v);
   ans := 1;
+  print(ans);
   while (v > 0) do
   begin
     if((v >> 1) << 1 <> v) then       //如果n的当前末位为1
         ans := u*ans;  //ans乘上当前的a
       u := u*u;        //a自乘
-      print(u);
       v := v >> 1;       //n往右移一位
   end;
   print(ans);

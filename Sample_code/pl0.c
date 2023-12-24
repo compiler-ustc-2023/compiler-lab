@@ -1957,7 +1957,7 @@ void interpret()
                     }
                     printf("\n");
                 }
-                top -= (temp+1);
+                top = top - temp - 1;
                 //printf("\n");
                 break;
             case RANDOM_ADDR:
