@@ -8,5 +8,5 @@ block comments
 */
 i := brr[1][2][0];
 j := i;
-j := *(*(*(brr + 1) + 2));
+print( *(*(*(brr + 1) + 2)) );
 end.

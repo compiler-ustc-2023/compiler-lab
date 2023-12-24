@@ -3,8 +3,13 @@ var j;
 begin
   i := 2;
   j := 0;
+  print(j);
   do
-    j := j + i
+  begin
+    j := j + i;
+    print(j);
+  end
   while i <= 1;
   i := i + 1;
+  print(i);
 end.

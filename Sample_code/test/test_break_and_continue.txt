@@ -7,9 +7,12 @@ begin
   while i <= 5 do
   begin
     i := i + 1;
+    print(i);
     if i = 1 then continue;
     if i = 4 then break;
     j := j + i;
+    print(j);
   end;
   i := i + 1;
+  print(i);
 end.

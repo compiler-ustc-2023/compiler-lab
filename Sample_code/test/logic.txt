@@ -1,5 +1,7 @@
 var a;
 begin
   a := 2 && 0 || 0;
+  print(a);
   a := 2 || 3;
+  print(a);
 end.
