@@ -1,13 +1,14 @@
 var i;
-procedure p(var j);
+procedure p(var j, var i);
 begin
-  print(j);
+  print(j, i);
   j := 2;
   print(j);
+  CALLSTACK;
 end;
 
 begin
   i := 1;
   print(i);
-  call p(i*2+11);
+  call p(i*2+11, 77+33*i);
 end.

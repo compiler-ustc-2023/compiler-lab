@@ -1729,7 +1729,7 @@ void interpret()
     pc = 0;
     b = 1;
     top = 3;
-    stack[1] = stack[2] = stack[3] = 0;
+    stack[0] = stack[1] = stack[2] = stack[3] = 0;
     int param_num;
     do
     {
@@ -1887,8 +1887,16 @@ void interpret()
                 temp_b = b;
                 temp_pc = pc;
                 while(temp_b > 0){
-                    printf("bp:%d   ",temp_b);
-                    printf("PC: %d\n",temp_pc);
+                    printf("control link:%d\n",temp_b+1);
+                    printf("access link:%d\n", temp_b);
+                    printf("program counter: %d\n",temp_pc);
+                    printf("parameters count:%d\n",stack[temp_b-1]);
+                    param_num = stack[temp_b-1];
+                    if(param_num != 0) printf("parameter list:");
+                    for(tran_i=0; tran_i<param_num; tran_i++){
+                        printf("%d ",stack[temp_b-1-param_num+tran_i]);
+                    }
+                    printf("\n\n");
                     temp_pc = stack[temp_b+2];
                     temp_b = stack[temp_b+1];
                 }
@@ -1896,13 +1904,13 @@ void interpret()
             default:
                 if (i.a >= 0)
                 {
-                    // for(tran_i = 0; tran_i <= top; tran_i ++){
-                    //     printf("%d:%d\n", tran_i,stack[tran_i]);
-                    // }
-                    // printf("\n");
+                    for(tran_i = 0; tran_i <= top; tran_i ++){
+                        printf("%d:%d\n", tran_i,stack[tran_i]);
+                    }
+                    printf("\n");
                     param_num = stack[top];
                     while(param_num){
-                        stack[top+4+param_num] = stack[top-param_num];
+                        stack[top+4+param_num] = stack[top-stack[top]+param_num-1];
                         param_num--;
                     }
                     // printf("%d",stack[top]);
