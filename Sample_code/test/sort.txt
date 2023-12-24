@@ -9,10 +9,8 @@ var mid;
 var ans;
 var u;
 var v;
-procedure exp(var d, var e);      //计算u的v次幂(用快速幂算法)
+procedure exp(var u, var v);      //计算u的v次幂(用快速幂算法)
 begin
-  u := 2;
-  v := a[mid];
   print(u, v);
   ans := 1;
   while (v > 0) do
@@ -68,7 +66,5 @@ begin
     high := mid - 1;
   end;
   print(mid);
-  i := 2;
-  j := a[mid];
-  call exp(2*2, 1*2);       //计算2的a[mid]次幂
+  call exp(2, a[mid]);       //计算2的a[mid]次幂
 end.

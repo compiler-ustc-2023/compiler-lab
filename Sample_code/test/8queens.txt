@@ -16,15 +16,15 @@ begin
             if (stack[i] = j) then queen[i][j]:=1;
         end;
     end;
-    for(i:=0; i<8; i:=i+1) begin
-        if(stack[i] = 0) then print(1,0,0,0,0,0,0,0);
-        if(stack[i] = 1) then print(0,1,0,0,0,0,0,0);
-        if(stack[i] = 2) then print(0,0,1,0,0,0,0,0);
-        if(stack[i] = 3) then print(0,0,0,1,0,0,0,0);
-        if(stack[i] = 4) then print(0,0,0,0,1,0,0,0);
-        if(stack[i] = 5) then print(0,0,0,0,0,1,0,0);
-        if(stack[i] = 6) then print(0,0,0,0,0,0,1,0);
-        if(stack[i] = 7) then print(0,0,0,0,0,0,0,1);
+    for(i:=1; i<=8; i:=i+1) begin
+        if(stack[i] = 1) then print(1,0,0,0,0,0,0,0);
+        if(stack[i] = 2) then print(0,1,0,0,0,0,0,0);
+        if(stack[i] = 3) then print(0,0,1,0,0,0,0,0);
+        if(stack[i] = 4) then print(0,0,0,1,0,0,0,0);
+        if(stack[i] = 5) then print(0,0,0,0,1,0,0,0);
+        if(stack[i] = 6) then print(0,0,0,0,0,1,0,0);
+        if(stack[i] = 7) then print(0,0,0,0,0,0,1,0);
+        if(stack[i] = 8) then print(0,0,0,0,0,0,0,1);
     end;
 end;
 

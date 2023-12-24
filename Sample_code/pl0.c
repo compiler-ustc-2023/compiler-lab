@@ -1948,6 +1948,7 @@ void interpret()
             {
             case PRINT_ADDR:
                 param_num = stack[top];
+                int temp = param_num;
                 //printf("system call: PRINT\n");
                 if (param_num == 0)
                 {
@@ -1962,6 +1963,7 @@ void interpret()
                     }
                     printf("\n");
                 }
+                top -= (temp+1);
                 //printf("\n");
                 break;
             case RANDOM_ADDR:
