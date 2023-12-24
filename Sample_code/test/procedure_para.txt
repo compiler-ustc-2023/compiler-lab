@@ -1,12 +1,13 @@
 var i;
-procedure p(var i);
+procedure p(var j);
 begin
-  i := 2;
- print(i);
+  print(j);
+  j := 2;
+  print(j);
 end;
 
 begin
   i := 1;
- print(i);
-  call p(i);
+  print(i);
+  call p(i*2+11);
 end.

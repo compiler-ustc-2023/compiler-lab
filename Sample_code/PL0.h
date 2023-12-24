@@ -268,6 +268,7 @@ typedef struct
 {
     int n;
     int *kind;
+	char **name;
 } procedure_params, *ptr2param;
 
 typedef struct
