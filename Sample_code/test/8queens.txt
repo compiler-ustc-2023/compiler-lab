@@ -1,0 +1,76 @@
+var queen[8][8];
+var stack[10];
+var top;
+var i;
+var j;
+var k;
+var pos;
+var ret;
+var row;
+var col;
+procedure printf();
+begin
+    for(i:=0;i<8;i:=i+1) begin
+        for(j:=0;j<8;j:=j+1) begin
+            queen[i][j] := 0;
+            if (stack[i] = j) then queen[i][j]:=1;
+        end;
+    end;
+    for(i:=0; i<8; i:=i+1) begin
+        if(stack[i] = 0) then print(1,0,0,0,0,0,0,0);
+        if(stack[i] = 1) then print(0,1,0,0,0,0,0,0);
+        if(stack[i] = 2) then print(0,0,1,0,0,0,0,0);
+        if(stack[i] = 3) then print(0,0,0,1,0,0,0,0);
+        if(stack[i] = 4) then print(0,0,0,0,1,0,0,0);
+        if(stack[i] = 5) then print(0,0,0,0,0,1,0,0);
+        if(stack[i] = 6) then print(0,0,0,0,0,0,1,0);
+        if(stack[i] = 7) then print(0,0,0,0,0,0,0,1);
+    end;
+end;
+
+procedure verify();
+begin
+    ret := 1;
+    while (1 = 1) do begin
+        if(col = 1 && row <= 8) then begin 
+            break;
+        end;
+        for(k:=1; k <= col-1; k:=k+1) begin
+            if(stack[k] = row || col - k = row - stack[k] ||
+             col - k = stack[k] - row) then begin
+                ret := 0;
+                break;
+            end;
+        end;
+        break;
+    end;
+end;
+
+begin
+    stack[0] := 0;
+    top := 0;
+    pos := 0;
+    while (1 = 1) do
+    begin
+        if (top = -1) then break;
+        if (top = 8) then begin
+            call printf();
+            break;
+        end;
+        for(i:=pos+1; i<=8; i:=i+1) begin
+            row:=i;
+            col:=top+1;
+            call verify();
+            if (ret = 1) then begin
+                top := top + 1;
+                stack[top] := i;
+                pos := 0;
+                break;
+            end;
+        end;
+        if(i > 8) then begin
+            pos := stack[top];
+            top := top - 1;
+        end;
+    end;
+end.
