@@ -328,7 +328,7 @@ void enter(int kind, int *dimension, int depth)
         table[tx].value = num;
         break;
     case ID_VARIABLE: // 变量，以mask的形式存储
-        printf("%s %d %d\n",id ,dx , level);
+        // printf("%s %d %d\n",id ,dx , level);
         mk = (mask *)&table[tx];
         mk->level = level;
         mk->address = dx++;
@@ -1694,21 +1694,15 @@ void block(symset fsys, int para_number) // 生成一个程序体, para_number�
                 getsym();
                 while (sym != SYM_RPAREN)
                 {
-                    if (sym == SYM_VAR)
+                    getsym();       //跳过左括号
+                    vardeclaration();
+                    para_num += 1;
+                    while (sym == SYM_COMMA)
                     {
-                        getsym();
-                        para_num++;
-                        if (sym == SYM_IDENTIFIER)
-                        {
-                            enter(ID_VARIABLE, NULL, 0);    //提前给函数实参占用位置，调用时往里填
-                            getsym();
-                        }
-                    }
-                    else
-                    {
-                        printf("%d", sym);
-                        error(38);
-                        getsym();
+                        getsym();       //跳过逗号
+                        getsym();       //跳过var
+                        vardeclaration();
+                        para_num += 1;
                     }
                     if (sym == SYM_COMMA)
                     {
