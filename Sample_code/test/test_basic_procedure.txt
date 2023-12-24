@@ -1,14 +1,14 @@
 var i;
-procedure p;
+procedure p();
 begin
   i := 2;
 end;
-procedure q;
+procedure q();
 begin
   i := i + 1;
 end;
 begin
   i := 1;
-  call p;
-  call q;
+  call p();
+  call q();
 end.
