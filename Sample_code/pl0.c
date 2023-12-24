@@ -1611,7 +1611,7 @@ void block(symset fsys, int para_number) // 生成一个程序体, para_number�
     int savedlevel;
     symset set1, set;
 
-    dx = 3;
+    dx = 3 + para_number;
     block_dx = dx;
     // int temp_para_num;
     // for(temp_para_num = 0; temp_para_num < para_number; temp_para_num ++){

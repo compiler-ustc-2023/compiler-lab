@@ -10,12 +10,10 @@ var ans;
 //var u;
 //var v;
 procedure exp(var u, var v);      //计算u的v次幂(用快速幂算法)
+//var u1, v1;
 begin
-  //u := 2;
-  //v := 25;
   print(u, v);
   ans := 1;
-  print(ans);
   while (v > 0) do
   begin
     if((v >> 1) << 1 <> v) then       //如果n的当前末位为1
