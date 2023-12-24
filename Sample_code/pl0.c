@@ -445,7 +445,7 @@ void vardeclaration(void) // 往变量表中加入一个变量/数组/指针,mod
                         dimension[i++] = num; //
                         getsym();
                         if (sym != SYM_RIGHTBRACKET)
-                            error(52); // 缺少']'
+                            error(42); // 缺少']'
                         getsym();
                     }
                     else
@@ -478,7 +478,7 @@ void vardeclaration(void) // 往变量表中加入一个变量/数组/指针,mod
                     dimension[i++] = num; //
                     getsym();
                     if (sym != SYM_RIGHTBRACKET)
-                        error(52); // 缺少']'
+                        error(42); // 缺少']'
                     getsym();
                 }
                 else
@@ -509,26 +509,60 @@ void listcode(int from, int to)
     printf("\n");
 } // listcode
 
+// 生成基础的类型 by wdy
+p_type_array gen_basic_type() {
+	p_type_array tmp_array = (p_type_array)malloc(sizeof(type_array));
+	tmp_array->array_depth = 0;
+	tmp_array->array_name  = NULL;
+	return tmp_array;
+}
+
+// 生成当前数组指针所管辖的区域 by wdy
+int get_array_manage_space(p_type_array array) {
+	// array_depth 为当前处理的数组的维度
+	// 假设有数组定义 var brr[4][4][4]
+	// 比如 3 表示当前处理的是三维数组的数组名 brr，管理数组后 2 个维度相乘
+	// 2 表示当前处理的是 brr[1] 或者 *(brr + 1), 管理数组后 1 个维度
+	// 1 表示处理的是 brr[1][2] 或者 (*(brr + 1) + 2)
+	// 其实 1 这里就跟处理简单的 int一样了
+	// 0 表示处理简单的 int
+	int space = 1;
+	if (array->array_name) { // 如果当前处理的是数组
+		int array_dim = 0;
+		for (int k = 0; k < ARRAY_DIM; k++) {
+			if (array->array_name->dimension[k] != 0) {
+				array_dim++;
+			} else
+				break;
+		} // 得到当前数组的维度
+		  // end_index = (array_dim - 1)
+		  // (array_dim - 1) - start_index + 1 = array->array_depth - 1
+		  // So start_index = array_dim - array->array_depth + 1
+		for (int i = array_dim - 1; i > array_dim - array->array_depth; i--) {
+			space *= array->array_name->dimension[i];
+		}
+	}
+	return space;
+}
+
 //////////////////////////////////////////////////////////////////////
-void factor(symset fsys) // 生成因子
+p_type_array factor(symset fsys, p_type_array array) // 生成因子
 // 新增语法,by Lin
 // 1:& ident，取变量地址
 // 2:ident[express][express]...		//取数组元素
 // 3:若干个* 接变量，取若干次地址
 // 4:若干个*加(表达式),					//计算表达式后取地址
 {
-    void shift(symset fsys);
+    p_type_array expression(symset fsys, p_type_array array);
     int i; // 最近读的关键字在变量表中的下标
     symset set;
-
+    p_type_array res = array;
     // test(facbegsys, fsys, 24); // The symbol can not be as the beginning of an shift.
     while (sym == SYM_NULL) // 除去空格
     {
         getsym();
     }
 
-    // if (inset(sym, facbegsys))			//这个if没必要
-    //{
     if (sym == SYM_IDENTIFIER)
     {
         if ((i = position(id, start_level)) == 0)
@@ -540,20 +574,42 @@ void factor(symset fsys) // 生成因子
             switch (table[i].kind)
             {
                 mask *mk;
+                int	  space;
             case ID_CONSTANT:
-                getsym();
-                gen(LIT, 0, table[i].value);
-                break;
-            case ID_VARIABLE:
-                getsym();
-                mk = (mask *)&table[i];
-                gen(LOD, level - mk->level, mk->address);
-                break;
-            case ID_POINTER:
-                getsym();
-                mk = (mask *)&table[i];
-                gen(LOD, level - mk->level, mk->address);
-                break;
+				getsym();
+				space = get_array_manage_space(array);
+				if (space == 1) {
+					gen(LIT, 0, table[i].value);
+				} else {
+					gen(LIT, 0, space);
+					gen(LIT, 0, table[i].value);
+					gen(OPR, 0, OPR_MUL);
+				}
+				break;
+			case ID_VARIABLE:
+				getsym();
+				mk	  = (mask *)&table[i];
+				space = get_array_manage_space(array);
+				if (space == 1) {
+					gen(LOD, level - mk->level, mk->address);
+				} else {
+					gen(LIT, 0, space);
+					gen(LOD, level - mk->level, mk->address);
+					gen(OPR, 0, OPR_MUL);
+				}
+				break;
+			case ID_POINTER:
+				getsym();
+				mk	  = (mask *)&table[i];
+				space = get_array_manage_space(array);
+				if (space == 1) {
+					gen(LOD, level - mk->level, mk->address);
+				} else {
+					gen(LIT, 0, space);
+					gen(LOD, level - mk->level, mk->address);
+					gen(OPR, 0, OPR_MUL);
+				}
+				break;
             case ID_PROCEDURE:
                 getsym();
                 if (sym == SYM_SCOPE)
@@ -563,60 +619,72 @@ void factor(symset fsys) // 生成因子
                         error(30);
                     mk = (mask *)&table[i];      // 子函数的符号表表项
                     start_level = mk->level + 1; // 子函数本身的层次加一才能索引到子函数中的变量
-                    factor(fsys);
+                    res			= factor(fsys, array);
                     start_level = MAXLEVEL;
                 }
                 // error(21); // Procedure identifier can not be in an shift.
                 break;
-            case ID_ARRAY: // 新增读取数组元素,by Lin
+            case ID_ARRAY: // 新增读取数组元素,by Lin, by wdy
                 getsym();
-                mk = (mask *)&table[i];
-                if (sym == SYM_LEFTBRACKET) // 调用了数组元素
-                {
-                    while (sym == SYM_NULL) // 除去空格
-                    {
-                        getsym();
-                    }
-                    gen(LEA, level - mk->level, mk->address); // 将数组基地址置于栈顶
-                    int dim = 0;                              // 当前维度
-                    while (sym == SYM_LEFTBRACKET)
-                    {
-                        if (table[i].dimension[dim++] == 0)
-                        {
-                            error(52); // 数组不具备该维度
-                        }
-                        else
-                        {
-                            getsym();
-                            shift(fsys);
-                        }
-                        int space = 1;                        // 当前维度的数组空间
-                        for (int j = dim; j < ARRAY_DIM; j++) // 计算当前维的空间
-                        {
-                            if (table[i].dimension[j] != 0)
-                            {
-                                space *= table[i].dimension[j];
-                            }
-                            else
-                                break;
-                        }
-                        gen(LIT, 0, space);
-                        gen(OPR, 0, OPR_MUL);
-                        gen(OPR, 0, OPR_ADD);   // 更新地址
-                        while (sym == SYM_NULL) // 除去空格
-                        {
-                            getsym();
-                        }
-                        if (sym != SYM_RIGHTBRACKET)
-                        {
-                            error(53); // 没有对应的']'
-                        }
-                        getsym();
-                    }
-                    gen(LODA, 0, 0); // 将数组对应元素置于栈顶
-                }
+				mk						   = (mask *)&table[i];
+				int array_depth_first_meet = 0;
+				for (int k = 0; k < ARRAY_DIM; k++) {
+					if (mk->dimension[k] != 0) {
+						array_depth_first_meet++;
+					} else
+						break;
+				}							// 得到当前数组的维度
+				if (sym == SYM_LEFTBRACKET) // 调用了数组元素
+				{
+					res->array_depth = array_depth_first_meet;
+					res->array_name	 = mk;
+					gen(LEA, level - mk->level,
+						mk->address); // 将数组基地址置于栈顶
 
-                break;
+					int dim = 0; // 当前维度
+					while (sym == SYM_LEFTBRACKET) {
+						if (table[i].dimension[dim++] == 0) {
+							error(42); // 数组不具备该维度
+						} else {
+							getsym();
+							expression(fsys, gen_basic_type());
+						}
+						int space = 1; // 当前维度的数组空间
+						for (int j = dim; j < ARRAY_DIM;
+							 j++) // 计算当前维的空间
+						{
+							if (table[i].dimension[j] != 0) {
+								space *= table[i].dimension[j];
+							} else
+								break;
+						}
+						if (space > 1) {
+							gen(LIT, 0, space);
+							gen(OPR, 0, OPR_MUL);
+						}
+                        gen(OPR, 0, OPR_ADD); // 更新地址
+						while (sym == SYM_NULL) // 除去空格
+						{
+							getsym();
+						}
+						if (sym != SYM_RIGHTBRACKET) {
+							error(43); // 没有对应的']'
+						}
+						getsym();
+						res->array_depth--;
+					}
+					if (res->array_depth == 0) { // 索引结束才能取值
+						gen(LODA, 0, 0); // 将数组对应元素置于栈顶
+					}
+					// 否则只是计算地址
+				} else { // 只有一个数组名，没有方括号
+					gen(LEA, level - mk->level,
+						mk->address); // 将数组基地址置于栈顶
+					// 返回这个数组的信息
+					res->array_depth = array_depth_first_meet;
+					res->array_name	 = mk;
+				}
+				break;
             } // switch
         }
     }
@@ -626,7 +694,7 @@ void factor(symset fsys) // 生成因子
         if (sym != SYM_IDENTIFIER)
             error(30);
         start_level = 0; // 索引到main函数层次中定义的变量
-        factor(fsys);
+        res			= factor(fsys, array);
         start_level = MAXLEVEL;
     }
     else if (sym == SYM_NUMBER)
@@ -636,14 +704,15 @@ void factor(symset fsys) // 生成因子
             error(25); // The number is too great.
             num = 0;
         }
-        gen(LIT, 0, num);
+        int space = get_array_manage_space(array);
+		gen(LIT, 0, num * space);
         getsym();
     }
     else if (sym == SYM_LPAREN)
     {
         getsym();
         set = uniteset(createset(SYM_RPAREN, SYM_NULL), fsys);
-        shift(set);
+        res = expression(set, array);
         destroyset(set);
         if (sym == SYM_RPAREN)
         {
@@ -657,7 +726,7 @@ void factor(symset fsys) // 生成因子
     else if (sym == SYM_MINUS) // UMINUS,  Expr -> '-' Expr
     {
         getsym();
-        factor(fsys);
+        res = factor(fsys, array);
         gen(OPR, 0, OPR_NEG);
     }
     // 新增语法,by Lin
@@ -717,7 +786,7 @@ void factor(symset fsys) // 生成因子
                 {
                     mask *mk;
                 case ID_CONSTANT:
-                    error(57); // 不允许取常量指向的地址的内容
+                    error(44); // 不允许取常量指向的地址的内容
                     break;
                 case ID_VARIABLE:
                     error(58); // 访问非指针变量指向的地址
@@ -729,55 +798,73 @@ void factor(symset fsys) // 生成因子
                 case ID_PROCEDURE:
                     error(21); // Procedure identifier can not be in an shift.
                     break;
-                case ID_ARRAY: // 新增读取数组元素,by Lin
+                case ID_ARRAY: // 新增读取数组元素,by Lin, by wdy
                     getsym();
-                    mk = (mask *)&table[i];
-                    if (sym == SYM_LEFTBRACKET) // 调用了数组元素
-                    {
-                        while (sym == SYM_NULL) // 除去空格
-                        {
-                            getsym();
-                        }
-                        gen(LEA, level - mk->level, mk->address); // 将数组基地址置于栈顶
-                        int dim = 0;                              // 当前维度
-                        while (sym == SYM_LEFTBRACKET)
-                        {
-                            if (table[i].dimension[dim++] == 0)
-                            {
-                                error(52); // 数组不具备该维度
-                            }
-                            else
-                            {
-                                getsym();
-                                shift(fsys);
-                            }
-                            int space = 1;                        // 当前维度的数组空间
-                            for (int j = dim; j < ARRAY_DIM; j++) // 计算当前维的空间
-                            {
-                                if (table[i].dimension[j] != 0)
-                                {
-                                    space *= table[i].dimension[j];
-                                }
-                                else
-                                    break;
-                            }
-                            gen(LIT, 0, space);
-                            gen(OPR, 0, OPR_MUL);
-                            gen(OPR, 0, OPR_ADD);   // 更新地址
-                            while (sym == SYM_NULL) // 除去空格
-                            {
-                                getsym();
-                            }
-                            if (sym != SYM_RIGHTBRACKET)
-                            {
-                                error(53); // 没有对应的']'
-                            }
-                            getsym();
-                        }
-                        gen(LODA, 0, 0); // 将数组对应元素置于栈顶
-                    }
-
-                    break;
+					mk						   = (mask *)&table[i];
+					int array_depth_first_meet = 0;
+					for (int k = 0; k < ARRAY_DIM; k++) {
+						if (mk->dimension[k] != 0) {
+							array_depth_first_meet++;
+						} else
+							break;
+					} // 得到当前数组的维度
+					res->array_depth = array_depth_first_meet;
+					res->array_name	 = mk;
+					if (depth >
+						array_depth_first_meet + res->array_name->depth) {
+						error(40); // 解引用符数量不能超过数组维度 +
+								   // 数组元素指针深度
+					}
+					if (sym == SYM_LEFTBRACKET) // 调用了数组元素
+					{
+						gen(LEA, level - mk->level,
+							mk->address); // 将数组基地址置于栈顶
+						int dim = 0;	  // 当前维度
+						while (sym == SYM_LEFTBRACKET) {
+							if (table[i].dimension[dim++] == 0) {
+								error(42); // 数组不具备该维度
+							} else {
+								getsym();
+								expression(fsys, gen_basic_type());
+							}
+							int space = 1; // 当前维度的数组空间
+							for (int j = dim; j < ARRAY_DIM;
+								 j++) // 计算当前维的空间
+							{
+								if (table[i].dimension[j] != 0) {
+									space *= table[i].dimension[j];
+								} else
+									break;
+							}
+							if (space > 1) {
+								gen(LIT, 0, space);
+								gen(OPR, 0, OPR_MUL);
+							}
+                            gen(OPR, 0, OPR_ADD); // 更新地址
+							while (sym == SYM_NULL) // 除去空格
+							{
+								getsym();
+							}
+							if (sym != SYM_RIGHTBRACKET) {
+								error(43); // 没有对应的']'
+							}
+							getsym();
+							res->array_depth--;
+							if (depth >
+								res->array_depth + res->array_name->depth) {
+								error(41); // 解引用符数量不能超过数组维度 +
+										   // 数组元素指针深度
+							}
+						}
+						if (res->array_depth == 0) { // 索引结束才能取值
+							gen(LODA, 0, 0); // 将数组对应元素置于栈顶
+						}
+						// 否则只是计算地址
+					} else { // 只有一个数组名，没有方括号
+						gen(LEA, level - mk->level,
+							mk->address); // 将数组基地址置于栈顶
+					}
+					break;
                 } // switch
             }
         }
@@ -785,7 +872,7 @@ void factor(symset fsys) // 生成因子
         {
             getsym();
             set = uniteset(createset(SYM_RPAREN, SYM_NULL), fsys);
-            shift(set);
+            res = expression(set, array);
             destroyset(set);
             if (sym == SYM_RPAREN)
             {
@@ -797,12 +884,22 @@ void factor(symset fsys) // 生成因子
             }
         }
         else
-            error(57);    // 非法取地址操作
-        while (depth > 0) // 进行若干次取地址运算
-        {
-            depth--;
-            gen(LODA, 0, 0);
-        }
+            error(44);    // 非法取地址操作
+        // 最终取地址的两种情况，分别是对简单变量取地址，对数组元素取地址
+        if (res->array_depth >
+			0) { //! 如果当前解引用的是数组，那么只要减少数组维度，也就是计算地址即可，不能取值
+			res->array_depth -= depth; // 解引用 depth 次，相当于减少 depth 维
+			if (res->array_depth == 0) {
+				gen(LODA, 0,
+					0); // !如果解引用到了最后一维，那么就必须取值，否则只是计算地址
+			}
+		} else { // 否则就是多重指针，那么就要减少指针的深度
+			while (depth > 0) // 进行若干次取地址运算
+			{
+				depth--;
+				gen(LODA, 0, 0);
+			}
+		}
     }
 
     // 错误检测,新增元素赋值号及右方括号by Lin
@@ -810,133 +907,118 @@ void factor(symset fsys) // 生成因子
     symset set1 = createset(SYM_BECOMES, SYM_RIGHTBRACKET, SYM_COMMA, SYM_RPAREN);
     fsys = uniteset(fsys, set1);
     test(fsys, createset(SYM_LPAREN, SYM_NULL, SYM_LEFTBRACKET, SYM_BECOMES, SYM_COMMA), 23);
-    //} // if
+
+    return res;
 } // factor
 
 //////////////////////////////////////////////////////////////////////
-void term(symset fsys) // 生成项
+p_type_array mul_and_div_expr(symset fsys, p_type_array array) // 生成项
 {
-    int mulop;
-    symset set;
+	int	   mulop;
+	symset set;
 
-    set = uniteset(fsys, createset(SYM_TIMES, SYM_SLASH, SYM_NULL));
-    factor(set);
-    while (sym == SYM_TIMES || sym == SYM_SLASH)
-    {
-        mulop = sym;
-        getsym();
-        factor(set);
-        if (mulop == SYM_TIMES)
-        {
-            gen(OPR, 0, OPR_MUL);
-        }
-        else
-        {
-            gen(OPR, 0, OPR_DIV);
-        }
-    } // while
-    destroyset(set);
-} // term
+	set = uniteset(fsys, createset(SYM_TIMES, SYM_SLASH, SYM_NULL));
+	p_type_array res = factor(set, array);
+	while (sym == SYM_TIMES || sym == SYM_SLASH) {
+		mulop = sym;
+		getsym();
+		factor(set, gen_basic_type()); // 数组与 int 的乘除法是正常的
+		if (mulop == SYM_TIMES) {
+			gen(OPR, 0, OPR_MUL);
+		} else {
+			gen(OPR, 0, OPR_DIV);
+		}
+	} // while
+	destroyset(set);
+	return res;
+} // mul_and_div_expr
 
 //////////////////////////////////////////////////////////////////////
-void expression(symset fsys) // 生成表达式, 只包含加减的算数表达式，add by wy
-{
-    int addop;
-    symset set;
+p_type_array add_and_sub_expr(symset fsys, p_type_array array) {
+	int	   addop;
+	symset set;
 
-    set = uniteset(fsys, createset(SYM_PLUS, SYM_MINUS, SYM_NULL));
+	set = uniteset(fsys, createset(SYM_PLUS, SYM_MINUS, SYM_NULL));
 
-    term(set);
-    while (sym == SYM_PLUS || sym == SYM_MINUS)
-    {
-        addop = sym;
-        getsym();
-        term(set);
-        if (addop == SYM_PLUS)
-        {
-            gen(OPR, 0, OPR_ADD);
-        }
-        else
-        {
-            gen(OPR, 0, OPR_MIN);
-        }
-    } // while
+	p_type_array res = mul_and_div_expr(set, array);
+	while (sym == SYM_PLUS || sym == SYM_MINUS) {
+		addop = sym;
+		getsym();
+		mul_and_div_expr(set, array); // 只有数组和 int 的加减法会出问题，所以要特殊处理
+		if (addop == SYM_PLUS) {
+			gen(OPR, 0, OPR_ADD);
+		} else {
+			gen(OPR, 0, OPR_MIN);
+		}
+	} // while
 
-    destroyset(set);
-} // expression
+	destroyset(set);
+	return res;
+} // add_and_sub_expr
 
-void shift(symset fsys)
-{ // 生成移位表达式 by wdy
-    int shiftop;
-    symset set = uniteset(fsys, createset(SYM_SHL, SYM_SHR, SYM_NULL));
-    expression(set);
-    while (sym == SYM_SHL || sym == SYM_SHR)
-    {
-        shiftop = sym;
-        getsym();
-        expression(set);
-        if (shiftop == SYM_SHL)
-        {
-            gen(OPR, 0, OPR_SHL);
-        }
-        else
-        {
-            gen(OPR, 0, OPR_SHR);
-        }
-    }
-    destroyset(set);
+//////////////////////////////////////////////////////////////////////
+p_type_array shift_expr(symset fsys, p_type_array array) { // 生成移位表达式
+	int			 shiftop;
+	symset		 set = uniteset(fsys, createset(SYM_SHL, SYM_SHR, SYM_NULL));
+	p_type_array res = add_and_sub_expr(set, array);
+	while (sym == SYM_SHL || sym == SYM_SHR) {
+		shiftop = sym;
+		getsym();
+		add_and_sub_expr(set, gen_basic_type());
+		if (shiftop == SYM_SHL) {
+			gen(OPR, 0, OPR_SHL);
+		} else {
+			gen(OPR, 0, OPR_SHR);
+		}
+	}
+	destroyset(set);
+    return res;
 }
-
 //////////////////////////////////////////////////////////////////////
-void condition(symset fsys) // 生成条件表达式
+p_type_array condition_expr(symset fsys, p_type_array array) // 生成条件表达式
 {
-    int relop;
-    symset set;
-
-    if (sym == SYM_ODD)
-    {
-        getsym();
-        shift(fsys);
-        gen(OPR, 0, 6);
-    }
-    else
-    {
-        set = uniteset(relset, fsys);
-        shift(set);
-        destroyset(set);
-        if (!inset(sym, relset))
-        {
-            // error(20); //注释掉, 可以没有关系运算, by wy
-        }
-        else
-        {
-            relop = sym;
-            getsym();
-            shift(fsys);
-            switch (relop)
-            {
-            case SYM_EQU:
-                gen(OPR, 0, OPR_EQU);
-                break;
-            case SYM_NEQ:
-                gen(OPR, 0, OPR_NEQ);
-                break;
-            case SYM_LES:
-                gen(OPR, 0, OPR_LES);
-                break;
-            case SYM_GEQ:
-                gen(OPR, 0, OPR_GEQ);
-                break;
-            case SYM_GTR:
-                gen(OPR, 0, OPR_GTR);
-                break;
-            case SYM_LEQ:
-                gen(OPR, 0, OPR_LEQ);
-                break;
-            } // switch
-        }     // else
-    }         // else
-} // condition
+	int	   relop;
+	symset set;
+    p_type_array res;
+	if (sym == SYM_ODD) {
+		getsym();
+		res = shift_expr(fsys, array);
+		gen(OPR, 0, 6);
+	} else {
+		set = uniteset(relset, fsys);
+		res = shift_expr(set, array);
+		destroyset(set);
+		// if (!inset(sym, relset)) {
+		// 	error(20); // 可以没有关系运算 by wy
+		// } else
+        if(inset(sym, relset)) {
+			relop = sym;
+			getsym();
+			shift_expr(fsys, gen_basic_type());
+			switch (relop) {
+			case SYM_EQU:
+				gen(OPR, 0, OPR_EQU);
+				break;
+			case SYM_NEQ:
+				gen(OPR, 0, OPR_NEQ);
+				break;
+			case SYM_LES:
+				gen(OPR, 0, OPR_LES);
+				break;
+			case SYM_GEQ:
+				gen(OPR, 0, OPR_GEQ);
+				break;
+			case SYM_GTR:
+				gen(OPR, 0, OPR_GTR);
+				break;
+			case SYM_LEQ:
+				gen(OPR, 0, OPR_LEQ);
+				break;
+			} // switch
+		}	  // else
+	}		  // else
+    return res;
+} // condition_expr
 
 // void end_condition(int JPcx)
 // {
@@ -949,18 +1031,23 @@ void condition(symset fsys) // 生成条件表达式
 
 //////////////////////////////////////////////////////////////////////
 // 生成逻辑表达式，add by wy
-void logic_and_expression(symset fsys)
+p_type_array logic_and_expression(symset fsys, p_type_array array)
 {
     int sign = sign_logic_and;
     symset set = uniteset(fsys, createset(SYM_AND, SYM_NULL));
-    condition(set);
+    p_type_array res = condition_expr(set, array);
+    // 第一个表达式后面跟了逻辑运算符，那么将其转换为 bool 值
+    if(sym == SYM_AND){ 
+        gen(OPR, 0, OPR_NOT);
+        gen(OPR, 0, OPR_NOT); // 两次取反，将表达式的值转变成bool值
+    }   
     while (sym == SYM_AND)
     {
         sign_logic_and++; // 记录逻辑与的计算次数
         cx_logic_and[sign_logic_and] = cx;
         gen(JZ, 0, 0);
         getsym();
-        condition(set);
+        condition_expr(set, gen_basic_type());
         gen(OPR, 0, OPR_AND);
     } // while
     destroyset(set);
@@ -968,20 +1055,27 @@ void logic_and_expression(symset fsys)
     {
         code[cx_logic_and[sign_logic_and--]].a = cx;
     }
+    return res;
 }
 
-void logic_or_expression(symset fsys)
+//////////////////////////////////////////////////////////////////////
+p_type_array logic_or_expression(symset fsys, p_type_array array)
 {
     int sign = sign_logic_or;
     symset set = uniteset(fsys, createset(SYM_OR, SYM_NULL));
-    logic_and_expression(set);
+    p_type_array res = logic_and_expression(set, array);
+    // 第一个表达式后面跟了逻辑运算符，那么将其转换为 bool 值
+    if(sym == SYM_OR){ 
+        gen(OPR, 0, OPR_NOT);
+        gen(OPR, 0, OPR_NOT); // 两次取反，将表达式的值转变成bool值
+    }   
     while (sym == SYM_OR)
     {
         sign_logic_or++; // 记录逻辑或的计算次数
         cx_logic_or[sign_logic_or] = cx;
         gen(JNZ, 0, 0);
         getsym();
-        logic_and_expression(set);
+        logic_and_expression(set, gen_basic_type());
         gen(OPR, 0, OPR_OR);
     } // while
     destroyset(set);
@@ -989,7 +1083,15 @@ void logic_or_expression(symset fsys)
     {
         code[cx_logic_or[sign_logic_or--]].a = cx;
     }
+    return res;
 }
+
+// 总的表达式，add by wy
+p_type_array expression(symset fsys, p_type_array array){
+    p_type_array res = logic_or_expression(fsys, array);
+    return res;
+}
+
 
 // 增加对连续赋值表达式的支持
 // 简单起见，无法对非简单变量进行连续赋值
@@ -1036,7 +1138,7 @@ void assign_statement(symset fsys) { // 生成赋值语句
 		}
 	}
 	// 处理最后一个右值
-	logic_or_expression(fsys); // 此时栈顶为最后一个表达式的值
+    expression(fsys, gen_basic_type()); // 此时栈顶为最后一个表达式的值
 	for (int j = curr_assign_index - 1; j >= 0; j--) {
 		mask* mk = assign_sequence[j];
 		gen(STO, level - mk->level, mk->address);
@@ -1057,7 +1159,7 @@ void call_procedure(symset fsys ,int i)
         getsym();
         while (sym != SYM_RPAREN && param_num--)
         {
-            shift(fsys);
+            expression(fsys, gen_basic_type());
             if (sym == SYM_COMMA)
             {
                 getsym();
@@ -1119,13 +1221,13 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
             {
                 if (table[i].dimension[dim++] == 0)
                 {
-                    error(52); // 数组不具备该维度
+                    error(42); // 数组不具备该维度
                 }
                 else
                 {
                     getsym();
                     // shift(fsys);
-                    logic_or_expression(fsys); // 逻辑表达式 add by wy
+                    expression(fsys, gen_basic_type());
                 }
                 int space = 1;                        // 当前维度的数组空间
                 for (int j = dim; j < ARRAY_DIM; j++) // 计算当前维的空间
@@ -1142,7 +1244,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
                 gen(OPR, 0, OPR_ADD); // 更新地址
                 if (sym != SYM_RIGHTBRACKET)
                 {
-                    error(53); // 没有对应的']'
+                    error(43); // 没有对应的']'
                 }
                 getsym();
             }
@@ -1155,8 +1257,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
                 error(13); // ':=' expected.
             }
             // shift(fsys);
-            logic_or_expression(fsys); // 逻辑表达式 add by wy
-            gen(STOA, level - mk->level, mk->address);
+            expression(fsys, gen_basic_type());
+            gen(STOA, 0, 0);
         }
         else
         {
@@ -1166,19 +1268,14 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
     else if (sym == SYM_TIMES) // 给指针指向内容赋值，add by Lin
     {
         getsym();
-        // shift(fsys); // 此时栈顶为一个地址
-        logic_or_expression(fsys); // 逻辑表达式 add by wy
-        if (sym == SYM_BECOMES)
-        {
-            getsym();
-        }
-        else
-        {
-            error(13); // ':=' expected.
-        }
-        // shift(fsys); // 栈顶为一个表达式的值
-        logic_or_expression(fsys); // 逻辑表达式 add by wy
-        gen(STOA, 0, 0);
+		expression(fsys, gen_basic_type()); // 此时栈顶为一个地址
+		if (sym == SYM_BECOMES) {
+			getsym();
+		} else {
+			error(13); // ':=' expected.
+		}
+		expression(fsys, gen_basic_type()); // 栈顶为一个表达式的值
+		gen(STOA, 0, 0);
     }
 
     else if (sym == SYM_CALL)
@@ -1213,7 +1310,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         getsym();
         set1 = createset(SYM_THEN, SYM_DO, SYM_NULL);
         set = uniteset(set1, fsys);
-        logic_or_expression(set); // 逻辑表达式 add by wy
+        expression(set, gen_basic_type());
         destroyset(set1);
         destroyset(set);
         if (sym == SYM_THEN)
@@ -1264,7 +1361,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         getsym();
         set1 = createset(SYM_DO, SYM_NULL);
         set = uniteset(set1, fsys);
-        logic_or_expression(set); // 逻辑表达式 add by wy
+        expression(set, gen_basic_type());
         destroyset(set1);
         destroyset(set);
         cx2 = cx;
@@ -1312,7 +1409,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
             cx2 = cx;
             set1 = createset(SYM_SEMICOLON, SYM_NULL);
             set = uniteset(set1, fsys);
-            logic_or_expression(set);
+            expression(set, gen_basic_type());
             destroyset(set1);
             destroyset(set);
             gen(JPC, 0, cx+2);
@@ -1345,7 +1442,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         {
             cx1 = cx;
             getsym();
-            condition(fsys);
+            condition_expr(fsys, gen_basic_type());
             cx3 = cx;
             gen(JPC, 0, 0);
         }
@@ -1430,7 +1527,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         {
             int param_count = 0;
             // shift(fsys);
-            logic_or_expression(fsys); // 逻辑表达式 add by wy
+            expression(fsys, gen_basic_type());
             param_count += 1;
             while (sym != SYM_RPAREN)
             {
@@ -1443,7 +1540,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
                 {
                     getsym();
                     // shift(fsys);
-                    logic_or_expression(fsys); // 逻辑表达式 add by wy
+                    expression(fsys, gen_basic_type());
                     param_count += 1;
                 }
             }
@@ -1474,7 +1571,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         {
             int param_count = 0;
             // shift(fsys);
-            logic_or_expression(fsys); // 逻辑表达式 add by wy
+            expression(fsys, gen_basic_type());
             param_count += 1;
             while (sym != SYM_RPAREN)
             {
@@ -1487,7 +1584,7 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
                 {
                     getsym();
                     // shift(fsys);
-                    logic_or_expression(fsys); // 逻辑表达式 add by wy
+                    expression(fsys, gen_basic_type());
                     param_count += 1;
                     while (sym == SYM_NULL)
                         getsym();
@@ -1716,7 +1813,7 @@ int base(int stack[], int currentLevel, int levelDiff)
 void interpret()
 {
     int pc; // program counter
-    int stack[STACKSIZE];
+    int stack[STACKSIZE] = {0}; // 栈初始化为0
     int top;       // top of stack,栈顶寄存器
     int b;         // program, base, and top-stack register, 函数栈bp
     int temp_b;
@@ -1817,6 +1914,10 @@ void interpret()
                 top--;
                 stack[top] = stack[top] || stack[top + 1];
                 break;
+            // 增加非运算符实现, by wdy
+            case OPR_NOT:
+                stack[top] = !stack[top];
+                break;
             } // switch
             break;
         case LOD:
@@ -1830,6 +1931,7 @@ void interpret()
         case STOA:
             stack[stack[top - 1]] = stack[top];
             printf("%d\n", stack[top]);
+            top -= 2; // STOA 之后弹栈
             break;
         case LEA:
             stack[++top] = base(stack, b, i.l) + i.a;
@@ -1950,18 +2052,32 @@ void interpret()
 } // interpret
 
 //////////////////////////////////////////////////////////////////////
-int main()
+int main(int argc, char** argv)
 {
     FILE *hbin;
-    char s[80];
+    char* file_path = "test/logic.txt";
     int i;
     symset set, set1, set2;
 
-    printf("Please input source file name: "); // get file name to be compiled
-    scanf("%s", s);
-    if ((infile = fopen(s, "r")) == NULL)
+    if(argc > 1){
+        if(strcmp(argv[1], "-h") == 0){
+            printf("Usage: ./pl0.exe -f [filename]\n");
+            return 0;
+        }
+        else if(strcmp(argv[1], "-f") == 0){
+            if(argc > 2){
+                file_path = argv[2];
+            }
+            else{
+                printf("Usage: ./pl0.exe -f [filename]\n");
+                return 0;
+            }
+        }
+    }
+
+    if ((infile = fopen(file_path, "r")) == NULL)
     {
-        printf("File %s can't be opened.\n", s);
+        printf("File %s can't be opened.\n", file_path);
         exit(1);
     }
 
