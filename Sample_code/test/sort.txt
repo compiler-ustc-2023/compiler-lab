@@ -1,0 +1,89 @@
+/*
+测试样例：先生成一个无序的数组a[10];
+用冒泡排序法对数组进行排序;
+二分查找数组中a[4]的位置;
+调用函数计算2的a[4]次幂(快速幂算法);
+*/
+
+/*
+涉及到的功能：
+1.一维数组的实现及其指针化表示(赋初值时用了*(a+i) = xx的形式)
+2.print内置函数(输出时调用print输出的)
+3.添加注释：比如说这里就是了，还有下面也有注释
+4.参数传递：调用快速幂函数时传入了底数2和指数a[4]
+5.C风格语句的实现：快速幂函数里面用到了位运算
+6.for循环的实现
+7.循环过程中break,continue的使用(二分查找时用到)
+*/
+
+var i;
+var j;
+var a[10];
+var temp;
+var key;
+var low;      //二分查找上下界
+var high;
+var mid;
+var ans;
+//var u;
+//var v;
+procedure exp(var u, var v);      //计算u的v次幂(用快速幂算法)
+//var u1, v1;
+begin
+  print(u, v);
+  ans := 1;
+  while (v > 0) do
+  begin
+    if((v >> 1) << 1 <> v) then       //如果n的当前末位为1
+        ans := u*ans;  //ans乘上当前的a
+      u := u*u;        //a自乘
+      v := v >> 1;       //n往右移一位
+  end;
+  print(ans);
+end;
+
+begin
+  //数组赋初值，用一个二次函数进行赋值使数组元素无序
+  for(i:= 0; i<10; i:=i+1)
+  begin
+    *(a+i) := 5*i-2*i*i+50;
+    print(a[i], i);
+  end;
+
+  //进行冒泡排序
+  for(i:= 0; i<10; i:=i+1)
+  begin
+    for(j:= 0; j<9; j:=j+1)
+    begin
+      if(a[j] > a[j+1]) then
+      begin
+        temp := a[j];
+        a[j] := a[j+1];
+        a[j+1] := temp
+      end;
+    end;
+  end;
+  for(i:= 0; i<10; i:=i+1)
+  begin
+    print(a[i], i);
+  end;
+
+  //下面进行二分查找temp
+  key := a[4];
+  low := 0;     //二分查找下界
+  high := 9;    //二分查找上界
+  while low < high do
+  begin
+    mid := (low+high) / 2;
+    if (a[mid] = key) then begin     //找到了
+      break;
+    end;
+    if (a[mid] < key) then begin
+      low := mid + 1;
+      continue;
+    end;
+    high := mid - 1;
+  end;
+  print(mid);
+  call exp(2, a[mid]);       //计算2的a[mid]次幂
+end.

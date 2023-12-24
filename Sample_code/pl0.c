@@ -328,6 +328,7 @@ void enter(int kind, int *dimension, int depth)
         table[tx].value = num;
         break;
     case ID_VARIABLE: // 变量，以mask的形式存储
+        // printf("%s %d %d\n",id ,dx , level);
         mk = (mask *)&table[tx];
         mk->level = level;
         mk->address = dx++;
@@ -904,7 +905,7 @@ p_type_array factor(symset fsys, p_type_array array) // 生成因子
 
     // 错误检测,新增元素赋值号及右方括号by Lin
     // 将逗号和右括号补充进follow集 by wu
-    symset set1 = createset(SYM_BECOMES, SYM_RIGHTBRACKET, SYM_COMMA, SYM_RPAREN);
+    symset set1 = createset(SYM_BECOMES, SYM_RIGHTBRACKET, SYM_COMMA, SYM_RPAREN, SYM_LPAREN, SYM_RANDOM);
     fsys = uniteset(fsys, set1);
     test(fsys, createset(SYM_LPAREN, SYM_NULL, SYM_LEFTBRACKET, SYM_BECOMES, SYM_COMMA), 23);
 
@@ -1610,7 +1611,7 @@ void block(symset fsys, int para_number) // 生成一个程序体, para_number�
     int savedlevel;
     symset set1, set;
 
-    dx = 3;
+    dx = 3 + para_number;
     block_dx = dx;
     // int temp_para_num;
     // for(temp_para_num = 0; temp_para_num < para_number; temp_para_num ++){
@@ -1689,24 +1690,19 @@ void block(symset fsys, int para_number) // 生成一个程序体, para_number�
             if (sym == SYM_LPAREN) // get parameters
             {
                 savedDx = dx;
+                dx = 3;     //重新分配数据地址
                 getsym();
                 while (sym != SYM_RPAREN)
                 {
-                    if (sym == SYM_VAR)
+                    getsym();       //跳过左括号
+                    vardeclaration();
+                    para_num += 1;
+                    while (sym == SYM_COMMA)
                     {
-                        getsym();
-                        para_num++;
-                        if (sym == SYM_IDENTIFIER)
-                        {
-                            enter(ID_VARIABLE, NULL, 0);    //提前给函数实参占用位置，调用时往里填
-                            getsym();
-                        }
-                    }
-                    else
-                    {
-                        printf("%d", sym);
-                        error(38);
-                        getsym();
+                        getsym();       //跳过逗号
+                        getsym();       //跳过var
+                        vardeclaration();
+                        para_num += 1;
                     }
                     if (sym == SYM_COMMA)
                     {
@@ -1946,7 +1942,8 @@ void interpret()
             {
             case PRINT_ADDR:
                 param_num = stack[top];
-                printf("system call: PRINT\n");
+                int temp = param_num;
+                //printf("system call: PRINT\n");
                 if (param_num == 0)
                 {
                     printf("\n");
@@ -1960,7 +1957,8 @@ void interpret()
                     }
                     printf("\n");
                 }
-                printf("\n");
+                top = top - temp - 1;
+                //printf("\n");
                 break;
             case RANDOM_ADDR:
                 printf("system call: RANDOM\n");
@@ -2009,7 +2007,7 @@ void interpret()
                 {
                     param_num = stack[top];
                     while(param_num){
-                        stack[top+4+param_num] = stack[top-stack[top]+param_num-1];
+                        stack[top+3+param_num] = stack[top-stack[top]+param_num-1];
                         param_num--;
                     }
                     // printf("%d",stack[top]);
@@ -2060,7 +2058,7 @@ void interpret()
 int main(int argc, char** argv)
 {
     FILE *hbin;
-    char* file_path = "test/logic.txt";
+    char* file_path = "test/test_procedure_para.txt";
     int i;
     symset set, set1, set2;
 

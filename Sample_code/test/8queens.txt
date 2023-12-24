@@ -1,0 +1,84 @@
+/*
+测试样例：经典8皇后求解算法.(用栈实现)
+*/
+
+/*
+涉及到的功能：
+1.一维数组、二维数组的实现(存储皇后位置)
+2.print内置函数(输出时调用print输出的)
+3.添加注释：比如说这里就是了，还有下面也有注释
+4.PL0条件的拓展，在检测棋盘冲突的时候用到了&&和||
+6.for循环的实现
+7.循环过程中break,continue的使用(二分查找时用到)
+*/
+
+var queen[8][8];
+var stack[10];
+var top;
+var i;
+var j;
+var k;
+var pos;
+var ret;
+var row;
+var col;
+procedure printf();
+begin
+    for(i:=0;i<8;i:=i+1) begin
+        for(j:=0;j<8;j:=j+1) begin
+            queen[i][j] := 0;
+            if (stack[i+1] = j+1) then queen[i][j]:=1;
+        end;
+    end;
+    for(i:=0; i<8; i:=i+1) begin
+        print(queen[i][0],queen[i][1],queen[i][2],queen[i][3],
+        queen[i][4],queen[i][5],queen[i][6],queen[i][7]);
+    end;
+end;
+
+procedure verify();
+begin
+    ret := 1;
+    while (1 = 1) do begin
+        if(col = 1 && row <= 8) then begin 
+            break;
+        end;
+        for(k:=1; k <= col-1; k:=k+1) begin
+            if(stack[k] = row || col - k = row - stack[k] ||
+             col - k = stack[k] - row) then begin
+                ret := 0;
+                break;
+            end;
+        end;
+        break;
+    end;
+end;
+
+begin
+    stack[0] := 0;
+    top := 0;
+    pos := 0;
+    while (1 = 1) do
+    begin
+        if (top = -1) then break;
+        if (top = 8) then begin
+            call printf();
+            break;
+        end;
+        for(i:=pos+1; i<=8; i:=i+1) begin
+            row:=i;
+            col:=top+1;
+            call verify();
+            if (ret = 1) then begin
+                top := top + 1;
+                stack[top] := i;
+                pos := 0;
+                break;
+            end;
+        end;
+        if(i > 8) then begin
+            pos := stack[top];
+            top := top - 1;
+        end;
+    end;
+end.
