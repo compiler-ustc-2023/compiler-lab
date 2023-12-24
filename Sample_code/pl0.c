@@ -1938,7 +1938,7 @@ void interpret()
 
         case STO:
             stack[base(stack, b, i.l) + i.a] = stack[top];
-            printf("%d\n", stack[top]);
+            // printf("%d\n", stack[top]);
             // top--; 使用 POP 代替
             break;
         case CAL:
@@ -2128,7 +2128,7 @@ int main(int argc, char** argv)
         interpret();
     else
         printf("There are %d error(s) in PL/0 program.\n", err);
-    listcode(0, cx);
+    // listcode(0, cx);
 
     return 0;
 } // main
