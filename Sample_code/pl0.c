@@ -1200,6 +1200,8 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
 		loop_level--;
 		destroyset(set1);
 		destroyset(set);
+        if (sym != SYM_SEMICOLON) { error(17); }
+        else { getsym(); }
 		if (sym != SYM_WHILE) {
 			error(40);
 		} else {
