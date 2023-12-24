@@ -13,18 +13,12 @@ begin
     for(i:=0;i<8;i:=i+1) begin
         for(j:=0;j<8;j:=j+1) begin
             queen[i][j] := 0;
-            if (stack[i] = j) then queen[i][j]:=1;
+            if (stack[i+1] = j+1) then queen[i][j]:=1;
         end;
     end;
-    for(i:=1; i<=8; i:=i+1) begin
-        if(stack[i] = 1) then print(1,0,0,0,0,0,0,0);
-        if(stack[i] = 2) then print(0,1,0,0,0,0,0,0);
-        if(stack[i] = 3) then print(0,0,1,0,0,0,0,0);
-        if(stack[i] = 4) then print(0,0,0,1,0,0,0,0);
-        if(stack[i] = 5) then print(0,0,0,0,1,0,0,0);
-        if(stack[i] = 6) then print(0,0,0,0,0,1,0,0);
-        if(stack[i] = 7) then print(0,0,0,0,0,0,1,0);
-        if(stack[i] = 8) then print(0,0,0,0,0,0,0,1);
+    for(i:=0; i<8; i:=i+1) begin
+        print(queen[i][0],queen[i][1],queen[i][2],queen[i][3],
+        queen[i][4],queen[i][5],queen[i][6],queen[i][7]);
     end;
 end;
 
