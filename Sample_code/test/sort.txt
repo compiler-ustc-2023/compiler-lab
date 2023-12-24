@@ -1,0 +1,74 @@
+var i;
+var j;
+var a[10];
+var temp;
+var key;
+var low;      //二分查找上下界
+var high;
+var mid;
+var ans;
+var u;
+var v;
+procedure exp(var d, var e);      //计算u的v次幂(用快速幂算法)
+begin
+  u := 2;
+  v := a[mid];
+  print(u, v);
+  ans := 1;
+  while (v > 0) do
+  begin
+    if((v >> 1) << 1 <> v) then       //如果n的当前末位为1
+          ans := u*ans;  //ans乘上当前的a
+        u := u*u;        //a自乘
+        v := v >> 1;       //n往右移一位
+  end;
+  print(ans);
+end;
+
+begin
+  //数组赋初值，用一个二次函数进行赋值使数组元素无序
+  for(i:= 0; i<10; i:=i+1)
+  begin
+    *(a+i) := 5*i-2*i*i+50;
+    print(a[i], i);
+  end;
+
+  //进行冒泡排序
+  for(i:= 0; i<10; i:=i+1)
+  begin
+    for(j:= 0; j<9; j:=j+1)
+    begin
+      if(a[j] > a[j+1]) then
+      begin
+        temp := a[j];
+        a[j] := a[j+1];
+        a[j+1] := temp
+      end;
+    end;
+  end;
+  for(i:= 0; i<10; i:=i+1)
+  begin
+    print(a[i], i);
+  end;
+
+  //下面进行二分查找temp
+  key := a[4];
+  low := 0;     //二分查找下界
+  high := 9;    //二分查找上界
+  while low < high do
+  begin
+    mid := (low+high) / 2;
+    if (a[mid] = key) then begin     //找到了
+      break;
+    end;
+    if (a[mid] < key) then begin
+      low := mid + 1;
+      continue;
+    end;
+    high := mid - 1;
+  end;
+  print(mid);
+  i := 2;
+  j := a[mid];
+  call exp(2*2, 1*2);       //计算2的a[mid]次幂
+end.

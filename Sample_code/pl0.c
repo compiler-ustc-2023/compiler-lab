@@ -904,7 +904,7 @@ p_type_array factor(symset fsys, p_type_array array) // 生成因子
 
     // 错误检测,新增元素赋值号及右方括号by Lin
     // 将逗号和右括号补充进follow集 by wu
-    symset set1 = createset(SYM_BECOMES, SYM_RIGHTBRACKET, SYM_COMMA, SYM_RPAREN);
+    symset set1 = createset(SYM_BECOMES, SYM_RIGHTBRACKET, SYM_COMMA, SYM_RPAREN, SYM_LPAREN, SYM_RANDOM);
     fsys = uniteset(fsys, set1);
     test(fsys, createset(SYM_LPAREN, SYM_NULL, SYM_LEFTBRACKET, SYM_BECOMES, SYM_COMMA), 23);
 
@@ -1946,7 +1946,7 @@ void interpret()
             {
             case PRINT_ADDR:
                 param_num = stack[top];
-                printf("system call: PRINT\n");
+                //printf("system call: PRINT\n");
                 if (param_num == 0)
                 {
                     printf("\n");
@@ -1960,7 +1960,7 @@ void interpret()
                     }
                     printf("\n");
                 }
-                printf("\n");
+                //printf("\n");
                 break;
             case RANDOM_ADDR:
                 printf("system call: RANDOM\n");
