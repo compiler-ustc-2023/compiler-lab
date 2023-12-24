@@ -185,6 +185,10 @@ char *err_msg[] =
         /* 38 */ "The parameter is expected but other words appear",   // add by wy
         /* 39 */ "The procedure loses a parameter or has an extra ','",// add by wy
         /* 40 */ "Expected 'while' here." // do-while missing "while"
+        /* 41 */ "The dereference character cannot exceed the array dimension plus the depth of the array element pointer.", // 解引用符不能超过数组维度加数组元素指针深度 by wdy
+        /* 42 */ "The array does not have this dimension.", // 数组没有这个维度 by wdy
+        /* 43 */ "Expected ']' here.", // 缺少']' by wdy
+        /* 44 */ "Get address illegally.", // 非法取地址 by wdy
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -295,6 +299,12 @@ typedef struct
     int depth; // 指针深度
     ptr2param para_procedure; // 指向参数表的指针, add by wy
 } mask;        // 变量或函数，和常量共用存储空间，将value的位置用来存储层次level和地址address
+
+// 数组深度和类型 by wdy
+typedef struct {
+	mask *array_name;
+	int	  array_depth;
+} type_array, *p_type_array;
 
 FILE *infile;
 
