@@ -16,9 +16,10 @@ begin
   while (v > 0) do
   begin
     if((v >> 1) << 1 <> v) then       //如果n的当前末位为1
-          ans := u*ans;  //ans乘上当前的a
-        u := u*u;        //a自乘
-        v := v >> 1;       //n往右移一位
+        ans := u*ans;  //ans乘上当前的a
+      u := u*u;        //a自乘
+      print(u);
+      v := v >> 1;       //n往右移一位
   end;
   print(ans);
 end;
