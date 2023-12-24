@@ -1685,7 +1685,7 @@ void interpret() {
 				param_num = stack[top];
 				int random_num;
 				if (param_num == 0) {
-					random_num = (int)rand();
+					random_num = (int)rand() % 100;
 					printf("%d ", random_num);
 				} else if (param_num == 1) {
 					random_num = (int)rand() % stack[top - 1];
