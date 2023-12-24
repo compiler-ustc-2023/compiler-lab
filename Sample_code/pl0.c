@@ -1929,7 +1929,7 @@ void interpret()
             break;
         case STOA:
             stack[stack[top - 1]] = stack[top];
-            printf("%d\n", stack[top]);
+            // printf("%d\n", stack[top]);
             top -= 2; // STOA 之后弹栈
             break;
         case LEA:
