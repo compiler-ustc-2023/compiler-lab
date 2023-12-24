@@ -1946,7 +1946,7 @@ void interpret()
             {
             case PRINT_ADDR:
                 param_num = stack[top];
-                printf("system call: print\n");
+                printf("system call: PRINT\n");
                 if (param_num == 0)
                 {
                     printf("\n");
@@ -1960,9 +1960,10 @@ void interpret()
                     }
                     printf("\n");
                 }
+                printf("\n");
                 break;
             case RANDOM_ADDR:
-                printf("system call: random\n");
+                printf("system call: RANDOM\n");
                 param_num = stack[top];
                 int random_num;
                 if (param_num == 0)
@@ -1981,7 +1982,7 @@ void interpret()
                     printf("%d ", random_num);
                 }
                 stack[++top] = random_num;
-                printf("\n");
+                printf("\n\n");
                 break;
             case CALLSTACK_ADDR:
                 printf("system call: CALLSTACK\n");
@@ -2001,14 +2002,11 @@ void interpret()
                     temp_pc = stack[temp_b+2];
                     temp_b = stack[temp_b+1];
                 }
+                printf("\n");
                 break;
             default:
                 if (i.a >= 0)
                 {
-                    for(tran_i = 0; tran_i <= top; tran_i ++){
-                        printf("%d:%d\n", tran_i,stack[tran_i]);
-                    }
-                    printf("\n");
                     param_num = stack[top];
                     while(param_num){
                         stack[top+4+param_num] = stack[top-stack[top]+param_num-1];
