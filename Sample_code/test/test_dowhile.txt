@@ -6,4 +6,5 @@ begin
   do
     j := j + i
   while i <= 1;
+  i := i + 1;
 end.

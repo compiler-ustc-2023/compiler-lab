@@ -1423,7 +1423,6 @@ void statement(symset fsys) // 语句,加入了指针和数组的赋值，modifi
         {
             error(17);
         }
-        getsym();
     }
     else if (sym == SYM_FOR)
     { // for statement, add by tq
