@@ -328,6 +328,7 @@ void enter(int kind, int *dimension, int depth)
         table[tx].value = num;
         break;
     case ID_VARIABLE: // 变量，以mask的形式存储
+        printf("%s %d %d\n",id ,dx , level);
         mk = (mask *)&table[tx];
         mk->level = level;
         mk->address = dx++;
@@ -1689,6 +1690,7 @@ void block(symset fsys, int para_number) // 生成一个程序体, para_number�
             if (sym == SYM_LPAREN) // get parameters
             {
                 savedDx = dx;
+                dx = 3;     //重新分配数据地址
                 getsym();
                 while (sym != SYM_RPAREN)
                 {
@@ -2009,7 +2011,7 @@ void interpret()
                 {
                     param_num = stack[top];
                     while(param_num){
-                        stack[top+4+param_num] = stack[top-stack[top]+param_num-1];
+                        stack[top+3+param_num] = stack[top-stack[top]+param_num-1];
                         param_num--;
                     }
                     // printf("%d",stack[top]);
@@ -2060,7 +2062,7 @@ void interpret()
 int main(int argc, char** argv)
 {
     FILE *hbin;
-    char* file_path = "test/logic.txt";
+    char* file_path = "test/test_procedure_para.txt";
     int i;
     symset set, set1, set2;
 
