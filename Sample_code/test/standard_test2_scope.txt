@@ -1,3 +1,5 @@
+//作用域运算符的测试
+
 var i;
 procedure p1();
     var i ;
